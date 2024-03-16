@@ -1,0 +1,6 @@
+problem,num_nodes,num_edges,traffic_seed,tm_model,scale_factor,num_commodities,total_demand,algo,split_method,split_fraction,num_subproblems,num_paths,edge_disjoint,dist_metric,objective,obj_val,runtime
+Cogentco.graphml,197,486,1229219359,gravity,64.0,38610,76765.140625,pop,random,0,2,4,True,inv-cap,total_flow,36192.47359527698,1.8654179573059082
+Cogentco.graphml,197,486,1229219359,gravity,64.0,38610,76765.140625,pop,random,0,4,4,True,inv-cap,total_flow,36015.25984070025,0.9150159358978271
+Cogentco.graphml,197,486,1229219359,gravity,64.0,38610,76765.140625,pop,random,0,8,4,True,inv-cap,total_flow,35783.300286097154,0.3406410217285156
+Cogentco.graphml,197,486,1229219359,gravity,64.0,38610,76765.140625,pop,random,0,16,4,True,inv-cap,total_flow,35336.23084195146,0.21100401878356934
+Cogentco.graphml,197,486,1229219359,gravity,64.0,38610,76765.140625,pop,random,0,32,4,True,inv-cap,total_flow,34553.967871126835,0.12526297569274902
