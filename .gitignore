@@ -160,7 +160,13 @@ cython_debug/
 #.idea/
 
 # path folders
-topologies/paths/ncflow-edge-per-iter/
+topologies/paths
 
-Iridium/IridiumDataSet14day20sec/
+Iridium/IridiumDataSet14day20sec
+
+traffic-matrices/toy
+
+topologies
+
+run/teal-logs
 

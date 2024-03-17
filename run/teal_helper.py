@@ -4,6 +4,7 @@ from glob import iglob
 import argparse
 import os
 import sys
+from tqdm import tqdm
 
 sys.path.append("..")
 
@@ -14,7 +15,9 @@ PROBLEM_NAMES = [
     'UsCarrier.json',
     'Kdl.json',
     'ASN2k.json',
-].append([f"IridiumCat{i}.json" for i in range(300)])
+]
+PROBLEM_NAMES += [f"IridiumCat{i}.json" for i in range(300)]
+
 CONSTELLATIONS = [
     'Iridium'
 ]
@@ -25,7 +28,7 @@ TM_MODELS = [
 SCALE_FACTORS = [1.0]
 OBJ_STRS = ["total_flow", "min_max_link_util"]
 
-PATH_FORM_HYPERPARAMS = (4, True, "min-hop")
+PATH_FORM_HYPERPARAMS = (5, False, "min-hop")
 
 PROBLEM_NAMES_AND_TM_MODELS = [
     (prob_name, tm_model) for prob_name in PROBLEM_NAMES
@@ -38,7 +41,7 @@ GROUPED_BY_CONSTELLATION = defaultdict(list)
 HOLDOUT_PROBLEMS = []
 GROUPED_BY_HOLDOUT_PROBLEMS = defaultdict(list)
 
-for problem_name in PROBLEM_NAMES:
+for problem_name in tqdm(PROBLEM_NAMES, desc="reading traffic matrix"):
     if problem_name.endswith(".graphml"):
         topo_fname = os.path.join(TOPOLOGIES_DIR, "topology-zoo", problem_name)
     else:
@@ -78,8 +81,6 @@ for key, vals in GROUPED_BY_HOLDOUT_PROBLEMS.items():
     GROUPED_BY_HOLDOUT_PROBLEMS[key] = sorted(
         vals, key=lambda x: int(x[-1].split('_')[-3]))
 
-GROUPED_BY_CONSTELLATION
-
 def get_problems(args):
     if (args.topo, args.tm_model, args.scale_factor) not in GROUPED_BY_PROBLEMS:
         raise Exception('Traffic matrices not found')
@@ -92,8 +93,8 @@ def get_problems(args):
 def get_constellation_problems(args):
     problems = []
     constellation = args.constellation
-    for i in range(args.num_topo):
-        topo_key = f"{constellation}Cat{i}"
+    for i in tqdm(range(args.num_topo), desc="reading topologies"):
+        topo_key = f"{constellation}Cat{i}.json"
         key = (topo_key, args.tm_model, args.scale_factor)
         if key not in GROUPED_BY_PROBLEMS:
             raise Exception(f'Traffic matrices not found for {topo_key}')
@@ -122,6 +123,10 @@ def get_args_and_problems(formatted_fname_template, additional_args=[]):
     parser.add_argument(
         "--constellation", type=str, required=True, choices=CONSTELLATIONS,
         help="satellite constellation"
+    )
+    parser.add_argument(
+        "--num-topo", type=int, default=300,
+        help="number of topologies"
     )
     parser.add_argument(
         "--scale-factor", type=float, default=1.0, choices=SCALE_FACTORS,

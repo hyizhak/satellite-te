@@ -10,7 +10,8 @@ def weight_initialization(module):
 
     if isinstance(module, nn.Linear):
         torch.nn.init.xavier_uniform_(module.weight, gain=1)
-        torch.nn.init.constant_(module.bias, 0)
+        if module.bias is not None:
+            torch.nn.init.constant_(module.bias, 0)
 
 
 def uni_rand(low=-1, high=1):

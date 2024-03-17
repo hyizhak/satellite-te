@@ -24,8 +24,17 @@ class TopoGNN(nn.Module):
             num_heads=2,)
 
     def forward(self, G, efeatures):
+
+        efeatures = efeatures.reshape(-1, 1)
+
+        num_nodes = G.number_of_nodes()
         
         G = dgl.add_self_loop(G)
+
+        # may cause bugs to directly set the device
+        self_loop_features = torch.zeros((num_nodes, 1)).to('cuda')
+
+        efeatures = torch.cat((efeatures, self_loop_features), dim=0)
 
         # Initialize a temporary edge feature for message passing
         G.edata['temp'] = G.edata['capacity']
@@ -33,7 +42,9 @@ class TopoGNN(nn.Module):
         # Use message passing to sum the capacities of incoming edges for each node
         G.update_all(fn.copy_e('temp', 'm'), fn.sum('m', 'sum_cap'))
 
-        x = self.edge_gat_1(G, G.ndata['sum_cap'], efeatures)
+        nfeatures = torch.unsqueeze(G.ndata['sum_cap'], 1)
+
+        x = self.edge_gat_1(G, nfeatures, efeatures)
         # (N, H, O) -> (N, O)
         x = torch.sum(x, 1)
 
@@ -45,6 +56,8 @@ class TopoGNN(nn.Module):
 
         # Set the new node features in the graph
         G.ndata['feat'] = x
+
+        G = dgl.remove_self_loop(G)
 
         # Define a function to concatenate the features of source and destination nodes
         def generate_edge_features(edges):

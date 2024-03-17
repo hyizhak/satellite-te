@@ -64,7 +64,7 @@ class TealActor(nn.Module):
 
         # get model fname
         self.model_fname = self.model_full_fname(
-            model_dir, self.env.topo, num_layer, std)
+            model_dir, self.env.constellation, num_layer, std)
         self.model_save = model_save
         # load model
         self.load_model()
@@ -73,7 +73,7 @@ class TealActor(nn.Module):
         """Return full name of the ML model."""
 
         return os.path.join(
-            model_dir, "{}_flowGNN-{}_std-{}.pt".format(
+            model_dir, "{}_dualGNN-{}_std-{}.pt".format(
                 topo, num_layer, std < 0))
 
     def load_model(self):
@@ -106,6 +106,7 @@ class TealActor(nn.Module):
             features: input features including capacity and demands
         """
         x = self.TopoGNN(feature["topo"], feature["capacity"])
+        x = torch.squeeze(x, 1)
         flow = torch.concat([x, feature["traffic"]]).to(self.device)
         flow = flow.reshape(-1, 1)
         x = self.FlowGNN(flow)

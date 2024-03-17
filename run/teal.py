@@ -81,7 +81,7 @@ def benchmark(problems, output_csv, arg):
         device=device)
     teal_actor = TealActor(
         teal_env=teal_env,
-        topo_gnn_layer=topo_gnn,
+        topo_gnn=topo_gnn,
         num_layer=num_layer,
         model_dir=MODEL_DIR,
         model_save=model_save,

@@ -16,3 +16,14 @@ B4.json,12,38,32,1.0,real,29260.921875,Teal,4,True,min-hop,total_flow,13133.8496
 B4.json,12,38,33,1.0,real,28288.6328125,Teal,4,True,min-hop,total_flow,14489.091796875,0.00520777702331543
 B4.json,12,38,34,1.0,real,28490.2421875,Teal,4,True,min-hop,total_flow,13716.4677734375,0.005152702331542969
 B4.json,12,38,35,1.0,real,27384.470703125,Teal,4,True,min-hop,total_flow,14934.201171875,0.005376100540161133
+problem,num_nodes,num_edges,traffic_seed,scale_factor,tm_model,total_demand,algo,num_paths,edge_disjoint,dist_metric,objective,obj_val,runtime
+problem,num_nodes,num_edges,traffic_seed,scale_factor,tm_model,total_demand,algo,num_paths,edge_disjoint,dist_metric,objective,obj_val,runtime
+problem,num_nodes,num_edges,traffic_seed,scale_factor,tm_model,total_demand,algo,num_paths,edge_disjoint,dist_metric,objective,obj_val,runtime
+IridiumCat1.json,66,216,9,1.0,toy,314.38397216796875,Teal,4,True,min-hop,total_flow,91.24513244628906,0.05978655815124512
+IridiumCat2.json,66,216,9,1.0,toy,327.3199768066406,Teal,4,True,min-hop,total_flow,92.38369750976562,0.011769533157348633
+IridiumCat0.json,66,216,10,1.0,toy,299.57598876953125,Teal,4,True,min-hop,total_flow,80.5658950805664,0.010937929153442383
+IridiumCat1.json,66,216,10,1.0,toy,293.2039794921875,Teal,4,True,min-hop,total_flow,80.01393127441406,0.01130819320678711
+IridiumCat2.json,66,216,10,1.0,toy,304.07598876953125,Teal,4,True,min-hop,total_flow,83.46841430664062,0.01034998893737793
+IridiumCat0.json,66,216,11,1.0,toy,309.947998046875,Teal,4,True,min-hop,total_flow,86.65693664550781,0.011537551879882812
+IridiumCat1.json,66,216,11,1.0,toy,326.3199768066406,Teal,4,True,min-hop,total_flow,86.37940979003906,0.011577367782592773
+IridiumCat2.json,66,216,11,1.0,toy,285.01202392578125,Teal,4,True,min-hop,total_flow,75.89097595214844,0.010978221893310547

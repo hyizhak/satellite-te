@@ -58,6 +58,7 @@ class TealEnv(object):
         self.test_start, self.test_stop = test_size
         self.num_failure = num_failure
         self.device = device
+        self.rho = rho
 
         # # init matrices related to topology
         # self.G = self._read_graph_json(topo)
@@ -69,10 +70,10 @@ class TealEnv(object):
         # self.edge_index, self.edge_index_values, self.p2e = \
         #     self.get_topo_matrix(topo, num_path, edge_disjoint, dist_metric)
 
-        # init ADMM
-        self.ADMM = ADMM(
-            self.p2e, self.num_path, self.num_path_node,
-            self.num_edge_node, rho, self.device)
+        # # init ADMM
+        # self.ADMM = ADMM(
+        #     self.p2e, self.num_path, self.num_path_node,
+        #     self.num_edge_node, rho, self.device)
 
         # min/max value when clamp raw action
         self.raw_action_min = raw_action_min
@@ -111,6 +112,9 @@ class TealEnv(object):
             * (self.G.number_of_nodes()-1)
         self.edge_index, self.edge_index_values, self.p2e = \
             self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
+        self.ADMM = ADMM(
+            self.p2e, self.num_path, self.num_path_node,
+            self.num_edge_node, self.rho, self.device)
 
         src, dst, capacity = [], [], []
         for u, v, data in self.G.edges(data=True):
@@ -118,18 +122,20 @@ class TealEnv(object):
             dst.append(v)
             capacity.append(data['capacity'])
 
-        # Create a DGL graph from the node tensors
-        self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst)))
+        capacity = torch.FloatTensor(capacity).to(self.device)
+
+        # Create a DGL graph from the node tensor
+        self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
 
         # Add edge data (capacity) to the DGL graph
-        self.G_dgl.edata['capacity'] = torch.tensor(capacity)
+        self.G_dgl.edata['capacity'] = capacity
 
         with open(tm_fname, 'rb') as f:
             tm = pickle.load(f)
         # remove demands within nodes
         tm = torch.FloatTensor(
             [[ele]*self.num_path for i, ele in enumerate(tm.flatten())
-                if i % len(tm) != i//len(tm)]).flatten()
+                if i % len(tm) != i//len(tm)]).flatten().to(self.device)
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
                "capacity": capacity,
@@ -168,8 +174,9 @@ class TealEnv(object):
             'traffic_model': tm_fname.split('/')[-2],
             'traffic_seed': int(tm_fname.split('_')[-3]),
             'scale_factor': float(tm_fname.split('_')[-2]),
-            'total_demand': self.obs[
-                -self.num_path_node::self.num_path].sum().item(),
+            'total_demand': self.obs['traffic'][::self.num_path].sum().item(),
+            # 'total_demand': self.obs[
+            #     -self.num_path_node::self.num_path].sum().item(),
         }
         return problem_dict
 
@@ -190,7 +197,8 @@ class TealEnv(object):
             action = self.transform_raw_action(raw_action)
             if self.obj == 'total_flow':
                 # total flow require no constraint violation
-                action = self.ADMM.tune_action(self.obs, action, num_admm_step)
+                obs = torch.concat([self.obs['capacity'], self.obs['traffic']]).to(self.device)
+                action = self.ADMM.tune_action(obs, action, num_admm_step)
                 action = self.round_action(action)
             info['runtime'] = time.time() - start_time
             info['sol_mat'] = self.extract_sol_mat(action)
@@ -208,7 +216,7 @@ class TealEnv(object):
         elif self.obj == 'min_max_link_util':
             return (torch_scatter.scatter(
                 action[self.p2e[0]], self.p2e[1]
-                )/self.obs[:-self.num_path_node]).max()
+                )/self.obs['capacity']).max()
 
     def transform_raw_action(self, raw_action):
         """Return network flow allocation as action.
@@ -226,7 +234,7 @@ class TealEnv(object):
         raw_action = raw_action/(1+raw_action.sum(axis=-1)[:, None])
 
         # translate split ratio to flow
-        raw_action = raw_action.flatten() * self.obs[-self.num_path_node:]
+        raw_action = raw_action.flatten() * self.obs['traffic']
 
         return raw_action
 
@@ -244,8 +252,8 @@ class TealEnv(object):
             num_round_iter: number of rounds when iteratively cutting flow
         """
 
-        demand = self.obs[-self.num_path_node::self.num_path]
-        capacity = self.obs[:-self.num_path_node]
+        demand = self.obs['traffic'][::self.num_path]
+        capacity = self.obs['capacity']
 
         # reduce action proportionally if action exceed demand
         if round_demand:
@@ -302,7 +310,7 @@ class TealEnv(object):
 
         path_flow = self.transform_raw_action(raw_action)
         edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1])
-        util = edge_flow/self.obs[:-self.num_path_node]
+        util = edge_flow/self.obs['capacity']
 
         # sample from uniform distribution [mean_min, min_max]
         distribution = Uniform(
@@ -325,7 +333,7 @@ class TealEnv(object):
 
             # prepare path_util to bottleneck edge_util
             bottleneck_p2e = torch.sparse_coo_tensor(
-                self.p2e, (1/self.obs[:-self.num_path_node])[self.p2e[1]],
+                self.p2e, (1/self.obs['capacity'])[self.p2e[1]],
                 [self.num_path_node, self.num_edge_node])
 
             # sample raw_actions and change each node pair at a time for reward
