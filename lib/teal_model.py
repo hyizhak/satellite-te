@@ -54,7 +54,7 @@ class Teal():
             ids = range(self.env.idx_start, self.env.idx_stop)
             loop_obj = tqdm(
                 [ids[i:i+batch_size] for i in range(0, len(ids), batch_size)],
-                desc=f"Training epoch {epoch}/{num_epoch}: ")
+                desc=f"Training epoch {epoch}/{num_epoch}: ", position=0)
 
             for idx in loop_obj:
                 loss = 0

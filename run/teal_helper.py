@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 from tqdm import tqdm
+from random import shuffle
 
 sys.path.append("..")
 
@@ -16,7 +17,7 @@ PROBLEM_NAMES = [
     'Kdl.json',
     'ASN2k.json',
 ]
-PROBLEM_NAMES += [f"IridiumCat{i}.json" for i in range(300)]
+PROBLEM_NAMES += [f"IridiumCat{i}.json" for i in range(1)]
 
 CONSTELLATIONS = [
     'Iridium'
@@ -101,7 +102,7 @@ def get_constellation_problems(args):
         for topo_fname, tm_fname in GROUPED_BY_PROBLEMS[key]:
             problems.append((topo_key, topo_fname, tm_fname))
 
-    problems.sort(key=lambda x: int(x[2].split('_')[-3]))
+    shuffle(problems)
     return problems
 
 def get_args_and_problems(formatted_fname_template, additional_args=[]):
