@@ -17,7 +17,7 @@ PROBLEM_NAMES = [
     'Kdl.json',
     'ASN2k.json',
 ]
-PROBLEM_NAMES += [f"IridiumCat{i}.json" for i in range(1)]
+PROBLEM_NAMES += [f"IridiumCat{i}.json" for i in range(300)]
 
 CONSTELLATIONS = [
     'Iridium'

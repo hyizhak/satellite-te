@@ -44,7 +44,6 @@ class TealActor(nn.Module):
         self.env = teal_env
         self.num_path = self.env.num_path
         self.num_path_node = self.env.num_path_node
-        self.edge_index_values = self.env.edge_index_values
 
         # init TopoGNN & AlloGNN
         self.device = device
@@ -123,7 +122,7 @@ class TealActor(nn.Module):
         feature['problem'].nodes['link'].data['x'] = x
 
         # Split the tensor into two halves
-        first_half, second_half = self.edge_index_values.split(self.edge_index_values.size(0) // 2)
+        first_half, second_half = self.env.edge_index_values.split(self.edge_index_values.size(0) // 2)
 
         # Compare the two halves
         # are_same = torch.equal(first_half, second_half)
