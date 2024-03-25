@@ -133,13 +133,15 @@ class TealEnv(object):
         with open(tm_fname, 'rb') as f:
             tm = pickle.load(f)
         # remove demands within nodes
+        problem_G = self.create_heterograph(tm)
         tm = torch.FloatTensor(
             [[ele]*self.num_path for i, ele in enumerate(tm.flatten())
                 if i % len(tm) != i//len(tm)]).flatten().to(self.device)
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
                "capacity": capacity,
-               "traffic": tm}
+               "traffic": tm,
+               "problem": problem_G}
         # simulate link failures in testing
         if self.num_failure > 0 and self.idx_start == self.test_start:
             idx_failure = torch.tensor(
@@ -407,11 +409,11 @@ class TealEnv(object):
 
         self.path_fname = self.path_full_fname(
             topo, num_path, edge_disjoint, dist_metric)
-        print("Loading paths from pickle file", self.path_fname)
+        # print("Loading paths from pickle file", self.path_fname)
         try:
             with open(self.path_fname, 'rb') as f:
                 path_dict = pickle.load(f)
-                print("path_dict size:", len(path_dict))
+                # print("path_dict size:", len(path_dict))
                 return path_dict
         except FileNotFoundError:
             print("Creating paths {}".format(self.path_fname))
@@ -463,6 +465,8 @@ class TealEnv(object):
         # get regular path dict
         path_dict = self.get_regular_path(
             topo, num_path, edge_disjoint, dist_metric)
+        
+        self.paths = path_dict
 
         # edge nodes' degree, index lookup
         edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
@@ -498,6 +502,59 @@ class TealEnv(object):
         p2e[0] -= len(self.G.edges)
 
         return edge_index, edge_index_values, p2e
+    
+    def create_heterograph(self, tm):
+
+        # Initialize lists to store source, destination, and flow values
+        src, dst, flow_values = [], [], []
+
+        # Iterate through the flow array to extract non-zero flows
+        for i in range(tm.shape[0]):
+            for j in range(tm.shape[1]):
+                if tm[i][j] != 0 and i != j:
+                    src.append(i)
+                    dst.append(j)
+                    flow_values.append(tm[i][j])
+
+        flow_use_path = [[], []]
+        flow_count = 0
+        path_values = [0] * self.num_path_node
+        for (src, dst) in zip(src, dst):
+            flow_use_path[0] += [flow_count] * len(self.paths.get((src, dst), []))
+            index = self.num_path * ((self.G.number_of_nodes() - 1) * src + dst) if src > dst \
+                else self.num_path * ((self.G.number_of_nodes() - 1) * src + dst - 1)
+            flow_use_path[1] += list(range(index, index + self.num_path))
+            flow_count += 1
+
+            for i, path in enumerate(self.paths.get((src, dst), [])):
+                try:
+                    path_values[index+i] = len(path)
+                except Exception as e:
+                    print(src)
+                    print(dst)
+                    print(index+i)
+                    print(self.num_path_node)
+
+        flow_use_path = tuple(torch.tensor(sublist).to(self.device) for sublist in flow_use_path)
+
+        path_include_link = tuple(self.p2e)
+
+        graph_data = {
+            ('flow', 'uses', 'path'): flow_use_path,
+            ('path', 'includes', 'link'): path_include_link,
+            }
+        
+        num_nodes_dict = {'flow': len(flow_values), 
+                      'path': self.num_path_node,
+                      'link': self.num_edge_node}
+
+        G = dgl.heterograph(data_dict=graph_data, num_nodes_dict=num_nodes_dict)
+
+        G.nodes['flow'].data['x'] = torch.Tensor(flow_values).to(self.device)
+        G.nodes['path'].data['x'] = torch.Tensor(path_values).to(self.device)
+
+        return G
+
 
     def extract_sol_mat(self, action):
         """return sparse solution matrix.

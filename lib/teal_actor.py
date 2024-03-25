@@ -16,6 +16,7 @@ from dgl.nn import EdgeGATConv
 
 from .FlowGNN import FlowGNN
 from .TopoGNN import TopoGNN
+from .AlloGNN import AlloGNN
 from .utils import weight_initialization, print_
 
 
@@ -43,23 +44,32 @@ class TealActor(nn.Module):
         self.env = teal_env
         self.num_path = self.env.num_path
         self.num_path_node = self.env.num_path_node
+        self.edge_index_values = self.env.edge_index_values
 
-        # init TopoGNN & FlowGNN
+        # init TopoGNN & AlloGNN
         self.device = device
         self.TopoGNN = TopoGNN(self.env, topo_gnn).to(self.device)
-        self.FlowGNN = FlowGNN(self.env, num_layer).to(self.device)
+        # self.FlowGNN = FlowGNN(self.env, num_layer).to(self.device)
+        problem_G_sample = self.env.obs["problem"]
+        in_sizes = {'flow': 1,
+                    'path': 1,
+                    'link': 1}
+        
+        self.AlloGNN = AlloGNN(self.env, in_sizes=in_sizes , hidden_size=128, 
+                               out_sizes={'path':1}, num_heads=4, 
+                               canonical_etypes=problem_G_sample.canonical_etypes).to(self.device)
 
         # init COMA policy
         self.std = std
         self.log_std_max = log_std_max
         self.log_std_min = log_std_min
         self.mean_linear = nn.Linear(
-            self.num_path*(self.FlowGNN.num_layer+1),
+            self.num_path,
             self.num_path).to(self.device)
         # apply neuro networks for std
         if std < 0:
             self.log_std_linear = nn.Linear(
-                self.num_path*(self.FlowGNN.num_layer+1),
+                self.num_path,
                 self.num_path).to(self.device)
 
         # get model fname
@@ -106,13 +116,27 @@ class TealActor(nn.Module):
             features: input features including capacity and demands
         """
         x = self.TopoGNN(feature["topo"], feature["capacity"])
-        x = torch.squeeze(x, 1)
-        flow = torch.concat([x, feature["traffic"]]).to(self.device)
-        flow = flow.reshape(-1, 1)
-        x = self.FlowGNN(flow)
+        # x = torch.squeeze(x, 1)
+        # flow = torch.concat([x, feature["traffic"]]).to(self.device)
+        # flow = flow.reshape(-1, 1)
+        # x = self.FlowGNN(flow)
+        feature['problem'].nodes['link'].data['x'] = x
+
+        # Split the tensor into two halves
+        first_half, second_half = self.edge_index_values.split(self.edge_index_values.size(0) // 2)
+
+        # Compare the two halves
+        # are_same = torch.equal(first_half, second_half)
+
+        # print("First half and second half are the same:", are_same)
+
+        x = self.AlloGNN(feature['problem'], first_half)
+        # x = x.reshape(
+        #     self.num_path_node//self.num_path,
+        #     self.num_path*(self.FlowGNN.num_layer+1))
         x = x.reshape(
-            self.num_path_node//self.num_path,
-            self.num_path*(self.FlowGNN.num_layer+1))
+            self.num_path_node // self.num_path, -1
+        )
         mean = self.mean_linear(x)
 
         # to apply neuro networks for std
