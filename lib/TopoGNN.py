@@ -10,7 +10,7 @@ from .utils import weight_initialization
 
 class TopoGNN(nn.Module): 
 
-    def __init__(self, teal_env, gnn_type):
+    def __init__(self, dytop_env, gnn_type):
         super(TopoGNN, self).__init__()
         self.edge_gat_1 = dglnn.EdgeGATConv(
             in_feats=1,

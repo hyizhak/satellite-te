@@ -19,17 +19,17 @@ class FlowGNN(nn.Module):
     but require larger memory space.
     """
 
-    def __init__(self, teal_env, num_layer):
+    def __init__(self, dytop_env, num_layer):
         """Initialize flowGNN with the network topology.
 
         Args:
-            teal_env: teal environment
+            dytop_env: dytop environment
             num_layer: num of layers in flowGNN
         """
 
         super(FlowGNN, self).__init__()
 
-        self.env = teal_env
+        self.env = dytop_env
         self.num_layer = num_layer
 
         self.edge_index = self.env.edge_index

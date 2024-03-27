@@ -20,14 +20,14 @@ from .ADMM import ADMM
 from .path_utils import find_paths, graph_copy_with_edge_weights, remove_cycles
 
 
-class TealEnv(object):
+class DyToPEnv(object):
 
     def __init__(
             self, obj, constellation, problems,
             num_path, edge_disjoint, dist_metric, rho,
             train_size, val_size, test_size, num_failure, device,
             raw_action_min=-10.0, raw_action_max=10.0):
-        """Initialize Teal environment.
+        """Initialize DyToP environment.
 
         Args:
             obj: objective

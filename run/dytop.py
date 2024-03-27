@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-from teal_helper import get_args_and_problems, print_, PATH_FORM_HYPERPARAMS
+from dytop_helper import get_args_and_problems, print_, PATH_FORM_HYPERPARAMS
 
 import os
 import sys
@@ -9,13 +9,13 @@ import torch
 
 sys.path.append('..')
 
-from lib.teal_env import TealEnv
-from lib.teal_actor import TealActor
-from lib.teal_model import Teal
+from lib.dytop_env import DyToPEnv
+from lib.dytop_actor import DyToPActor
+from lib.dytop_model import DyToP
 
 
-TOP_DIR = "teal-logs"
-MODEL_DIR = "teal-models"
+TOP_DIR = "dytop-logs"
+MODEL_DIR = "dytop-models"
 HEADERS = [
     "problem",
     "num_nodes",
@@ -33,7 +33,7 @@ HEADERS = [
     "runtime",
 ]
 
-OUTPUT_CSV_TEMPLATE = "teal-{}-{}.csv"
+OUTPUT_CSV_TEMPLATE = "dytop-{}-{}.csv"
 
 
 def benchmark(problems, output_csv, arg):
@@ -64,8 +64,8 @@ def benchmark(problems, output_csv, arg):
     # testing hyper-parameters
     num_failure = args.failures
 
-    # ========== init teal env, actor, model
-    teal_env = TealEnv(
+    # ========== init dytop env, actor, model
+    dytop_env = DyToPEnv(
         obj=obj,
         # topo=topo,
         constellation=constellation,
@@ -79,25 +79,25 @@ def benchmark(problems, output_csv, arg):
         test_size=test_size,
         num_failure=num_failure,
         device=device)
-    teal_actor = TealActor(
-        teal_env=teal_env,
+    dytop_actor = DyToPActor(
+        dytop_env=dytop_env,
         topo_gnn=topo_gnn,
         num_layer=num_layer,
         model_dir=MODEL_DIR,
         model_save=model_save,
         device=device)
-    teal = Teal(
-        teal_env=teal_env,
-        teal_actor=teal_actor,
+    dytop = DyToP(
+        dytop_env=dytop_env,
+        dytop_actor=dytop_actor,
         lr=lr,
         early_stop=early_stop)
 
     # ========== train and test
-    teal.train(
+    dytop.train(
         num_epoch=num_epoch,
         batch_size=batch_size,
         num_sample=num_sample)
-    teal.test(
+    dytop.test(
         num_admm_step=num_admm_step,
         output_header=HEADERS,
         output_csv=output_csv,

@@ -11,24 +11,24 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 
-from .teal_actor import TealActor
-from .teal_env import TealEnv
+from .dytop_actor import DyToPActor
+from .dytop_env import DyToPEnv
 from .utils import print_
 
 
-class Teal():
-    def __init__(self, teal_env, teal_actor, lr, early_stop):
-        """Initialize Teal model.
+class DyToP():
+    def __init__(self, dytop_env, dytop_actor, lr, early_stop):
+        """Initialize DyToP model.
 
         Args:
-            teal_env: teal environment
-            num_layer: number of flowGNN layers
+            dytop_env: DyToP environment
+            dytop_actor: DyToP actor
             lr: learning rate
             early_stop: whether to early stop
         """
 
-        self.env = teal_env
-        self.actor = teal_actor
+        self.env = dytop_env
+        self.actor = dytop_actor
 
         # init optimizer
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr)
@@ -39,7 +39,7 @@ class Teal():
             self.val_reward = []
 
     def train(self, num_epoch, batch_size, num_sample):
-        """Train Teal model.
+        """Train DyToP model.
 
         Args:
             num_epoch: number of training epoch
@@ -54,7 +54,7 @@ class Teal():
             ids = range(self.env.idx_start, self.env.idx_stop)
             loop_obj = tqdm(
                 [ids[i:i+batch_size] for i in range(0, len(ids), batch_size)],
-                desc=f"Training epoch {epoch}/{num_epoch}: ", position=0)
+                desc=f"Training epoch {epoch+1}/{num_epoch}: ", position=0)
 
             for idx in loop_obj:
                 loss = 0
@@ -85,7 +85,7 @@ class Teal():
         self.actor.save_model()
 
     def val(self):
-        """Validating Teal model."""
+        """Validating DyToP model."""
 
         self.actor.eval()
         self.env.reset('val')
@@ -107,7 +107,7 @@ class Teal():
             rewards/(self.env.idx_stop - self.env.idx_start))
 
     def test(self, num_admm_step, output_header, output_csv, output_dir):
-        """Test Teal model.
+        """Test DyToP model.
 
         Args:
             num_admm_step: number of ADMM steps
@@ -157,7 +157,7 @@ class Teal():
                 sol_mat = info['sol_mat']
                 torch.save(sol_mat, os.path.join(
                     output_dir,
-                    "{}-{}-{}-teal_objective-{}_{}-paths_"
+                    "{}-{}-{}-dytop_objective-{}_{}-paths_"
                     "edge-disjoint-{}_dist-metric-{}_sol-mat.pt".format(
                         problem_dict['problem_name'],
                         problem_dict['traffic_model'],
@@ -176,7 +176,7 @@ class Teal():
                     problem_dict['scale_factor'],
                     problem_dict['traffic_model'],
                     problem_dict['total_demand'],
-                    "Teal",
+                    "DyToP",
                     problem_dict['num_path'],
                     problem_dict['edge_disjoint'],
                     problem_dict['dist_metric'],

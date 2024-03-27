@@ -20,15 +20,15 @@ from .AlloGNN import AlloGNN
 from .utils import weight_initialization, print_
 
 
-class TealActor(nn.Module):
+class DyToPActor(nn.Module):
 
     def __init__(
-            self, teal_env, topo_gnn, num_layer, model_dir, model_save, device,
+            self, dytop_env, topo_gnn, num_layer, model_dir, model_save, device,
             std=1, log_std_min=-10.0, log_std_max=10.0):
-        """Initialize teal actor.
+        """Initialize dytop actor.
 
         Args:
-            teal_env: teal environment
+            dytop_env: dytop environment
             num_layer: num of layers in flowGNN
             model_dir: model save directory
             model_save: whether to save the model
@@ -38,10 +38,10 @@ class TealActor(nn.Module):
             log_std_max: upper bound for log std
         """
 
-        super(TealActor, self).__init__()
+        super(DyToPActor, self).__init__()
 
-        # teal environment
-        self.env = teal_env
+        # dytop environment
+        self.env = dytop_env
         self.num_path = self.env.num_path
         self.num_path_node = self.env.num_path_node
 
@@ -89,7 +89,7 @@ class TealActor(nn.Module):
         """Load from model fname."""
 
         if os.path.exists(self.model_fname):
-            print_(f'Loading Teal model from {self.model_fname}')
+            print_(f'Loading DeToP model from {self.model_fname}')
             if self.device.type == 'cpu':
                 self.load_state_dict(
                     torch.load(
@@ -105,7 +105,7 @@ class TealActor(nn.Module):
         """Save from model fname."""
 
         if self.model_save:
-            print_(f'Saving Teal model from {self.model_fname}')
+            print_(f'Saving DyToP model from {self.model_fname}')
             torch.save(self.state_dict(), self.model_fname)
 
     def forward(self, feature):

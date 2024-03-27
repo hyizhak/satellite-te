@@ -22,7 +22,7 @@ class ADMM():
         """Initialize ADMM with the network topology.
 
         Args:
-            teal_env: teal environment
+            dytop_env: dytop environment
             rho: hyperparameter for the augumented Lagranian
             device: device for new tensor to be allocated
         """
