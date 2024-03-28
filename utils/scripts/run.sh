@@ -17,8 +17,8 @@ for problem in $PROBLEM_LIST; do
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM}
     # Run SpaceTE
-    python ${SPACETE_SCRIPT} \
+    nohup python ${SPACETE_SCRIPT} \
         --problem-path ${INPUT_DIR}/${problem} \
         --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM}
+        --topo-num ${RUN_TOPO_NUM} &
 done
