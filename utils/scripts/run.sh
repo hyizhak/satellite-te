@@ -21,5 +21,4 @@ for problem in $PROBLEM_LIST; do
         --problem-path ${INPUT_DIR}/${problem} \
         --output-dir ${OUTPUT_DIR} \
         --topo-num ${RUN_TOPO_NUM}
-    break
 done

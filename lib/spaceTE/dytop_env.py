@@ -463,16 +463,16 @@ class DyToPEnv(object):
         
         self.path_fname = path_fname = AssetManager.pathform_path(graph_path, num_path, edge_disjoint, dist_metric)
         
-        print("Loading paths from pickle file", path_fname)
+        # print("Loading paths from pickle file", path_fname)
         try:
             with open(path_fname, 'rb') as f:
                 path_dict = pickle.load(f)
-                print("path_dict size:", len(path_dict))
+                # print("path_dict size:", len(path_dict))
                 return path_dict
         except FileNotFoundError:
-            print("Creating paths {}".format(path_fname))
+            # print("Creating paths {}".format(path_fname))
             path_dict = self.compute_path(num_path, edge_disjoint, dist_metric)
-            print("Saving paths to pickle file")
+            # print("Saving paths to pickle file")
             with open(path_fname, "wb") as w:
                 pickle.dump(path_dict, w)
         return path_dict
