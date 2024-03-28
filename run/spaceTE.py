@@ -129,8 +129,6 @@ def benchmark(args):
         logging.info('Training starts')
         train_start_time = time.time()
 
-        logging.info(f'Training starts')
-
         dytop.train(
             num_epoch=epoch_num,
             batch_size=batch_size,
