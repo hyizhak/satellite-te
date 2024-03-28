@@ -161,6 +161,7 @@ cython_debug/
 
 # path folders
 topologies/paths
+input
 
 Iridium/IridiumDataSet14day20sec
 

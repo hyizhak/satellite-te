@@ -1,0 +1,66 @@
+Traceback (most recent call last):
+Traceback (most recent call last):
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/utils/scripts/../../run/spaceTE.py", line 12, in <module>
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/utils/scripts/../../run/spaceTE.py", line 12, in <module>
+Traceback (most recent call last):
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/utils/scripts/../../run/spaceTE.py", line 12, in <module>
+    from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/run/../lib/spaceTE/__init__.py", line 6, in <module>
+    from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/run/../lib/spaceTE/__init__.py", line 6, in <module>
+    from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/run/../lib/spaceTE/__init__.py", line 6, in <module>
+    from .dytop_actor import DyToPActor
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/run/../lib/spaceTE/dytop_actor.py", line 15, in <module>
+    from .dytop_actor import DyToPActor
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/run/../lib/spaceTE/dytop_actor.py", line 15, in <module>
+    from .dytop_actor import DyToPActor
+  File "/mnt/batch/tasks/shared/LS_root/mounts/clusters/satellite-te-node2/code/Users/e1310988/satellite-te/run/../lib/spaceTE/dytop_actor.py", line 15, in <module>
+    import dgl
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/__init__.py", line 16, in <module>
+    from . import (
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/dataloading/__init__.py", line 13, in <module>
+    from .dataloader import *
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/dataloading/dataloader.py", line 27, in <module>
+    from ..distributed import DistGraph
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/distributed/__init__.py", line 5, in <module>
+    from .dist_graph import DistGraph, DistGraphServer, edge_split, node_split
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/distributed/dist_graph.py", line 11, in <module>
+    from .. import backend as F, graphbolt as gb, heterograph_index
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/graphbolt/__init__.py", line 8, in <module>
+    from .base import *
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/graphbolt/base.py", line 8, in <module>
+    from torchdata.datapipes.iter import IterDataPipe
+ModuleNotFoundError: No module named 'torchdata'
+    import dgl
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/__init__.py", line 16, in <module>
+    from . import (
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/dataloading/__init__.py", line 13, in <module>
+    from .dataloader import *
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/dataloading/dataloader.py", line 27, in <module>
+    from ..distributed import DistGraph
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/distributed/__init__.py", line 5, in <module>
+    from .dist_graph import DistGraph, DistGraphServer, edge_split, node_split
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/distributed/dist_graph.py", line 11, in <module>
+    from .. import backend as F, graphbolt as gb, heterograph_index
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/graphbolt/__init__.py", line 8, in <module>
+    from .base import *
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/graphbolt/base.py", line 8, in <module>
+    from torchdata.datapipes.iter import IterDataPipe
+ModuleNotFoundError: No module named 'torchdata'
+    import dgl
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/__init__.py", line 16, in <module>
+    from . import (
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/dataloading/__init__.py", line 13, in <module>
+    from .dataloader import *
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/dataloading/dataloader.py", line 27, in <module>
+    from ..distributed import DistGraph
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/distributed/__init__.py", line 5, in <module>
+    from .dist_graph import DistGraph, DistGraphServer, edge_split, node_split
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/distributed/dist_graph.py", line 11, in <module>
+    from .. import backend as F, graphbolt as gb, heterograph_index
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/graphbolt/__init__.py", line 8, in <module>
+    from .base import *
+  File "/anaconda/envs/satte/lib/python3.10/site-packages/dgl/graphbolt/base.py", line 8, in <module>
+    from torchdata.datapipes.iter import IterDataPipe
+ModuleNotFoundError: No module named 'torchdata'
