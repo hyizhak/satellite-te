@@ -111,6 +111,25 @@ class DyToPActor(nn.Module):
         logging.info(f'Saving spaceTE model to {mpath}')
         torch.save(self.state_dict(), mpath)
 
+    def model_path(self, create_dir=False):
+        """Return full name of the ML model."""
+        return os.path.join(
+            AssetManager.model_dir(self.env.work_dir, create_dir=create_dir),
+            f'{self.train_id}.pt'
+        )
+    
+    def load_model(self):
+        """Load from model fname."""
+        mpath = self.model_path(True)
+        logging.info(f'Loading Teal model from {mpath}')
+        self.load_state_dict(torch.load(mpath, map_location=self.device))
+
+    def save_model(self):
+        """Save from model fname."""
+        mpath = self.model_path(True)
+        logging.info(f'Saving Teal model to {mpath}')
+        torch.save(self.state_dict(), mpath)
+
     # def load_model(self):
     #     """Load from model fname."""
 

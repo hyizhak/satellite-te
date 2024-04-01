@@ -20,5 +20,5 @@ for problem in $PROBLEM_LIST; do
     nohup python ${SPACETE_SCRIPT} \
         --problem-path ${INPUT_DIR}/${problem} \
         --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM}
+        --topo-num ${RUN_TOPO_NUM} 
 done

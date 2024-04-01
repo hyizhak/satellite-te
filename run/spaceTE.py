@@ -172,7 +172,7 @@ def benchmark(args):
         if not train:
             dytop.load_model()
         dytop.test(
-            admm_step_num=admm_step_num,
+            num_admm_step=admm_step_num,
             output_header=TEST_HEADERS,
             output_placeholder=TEST_PLACEHOLDER,
             output_csv=output_csv,
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     # training hyper-parameters
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--epochs', type=int, default=3, help='number of training epochs')
-    parser.add_argument('--bsz', type=int, default=20, help='batch size')
+    parser.add_argument('--bsz', type=int, default=32, help='batch size')
     parser.add_argument('--samples', type=int, default=5, help='number of COMA samples')
     parser.add_argument('--admm-steps', type=int, default=5, help='number of ADMM steps')
     parser.add_argument('--early-stop', type=bool, default=False, help='whether to stop early')

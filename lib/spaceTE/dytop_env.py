@@ -153,6 +153,8 @@ class DyToPEnv(object):
 
         topo, tm_fname = self.dataset[self.idx // self.num_tm]
 
+        self.topo = topo
+
         # init matrices related to topology
         self.G = self.read_graph(topo)
         # self.capacity = torch.FloatTensor(
@@ -218,19 +220,17 @@ class DyToPEnv(object):
     def render(self):
         """Return a dictionary for the details of the current problem"""
 
-        topo, tm_fname = self.dataset[self.idx]
+        topo, tm_fname = self.dataset[self.idx // self.num_tm]
         problem_dict = {
-            'problem_name': topo,
+            'problem_path': self.problem_path,
             'obj': self.obj,
-            'tm_fname': tm_fname.split('/')[-1],
+            'topo_idx': self.topo.split('/')[-2].split('_')[-1],
+            'tm_idx': self.idx,
             'num_node': self.G.number_of_nodes(),
             'num_edge': self.G.number_of_edges(),
             'num_path': self.num_path,
             'edge_disjoint': self.edge_disjoint,
             'dist_metric': self.dist_metric,
-            'traffic_model': tm_fname.split('/')[-2],
-            'traffic_seed': int(tm_fname.split('_')[-3]),
-            'scale_factor': float(tm_fname.split('_')[-2]),
             'total_demand': self.obs['traffic'][::self.num_path].sum().item(),
         }
         return problem_dict

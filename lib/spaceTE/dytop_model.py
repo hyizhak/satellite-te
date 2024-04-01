@@ -38,7 +38,7 @@ class DyToP():
         if self.early_stop:
             self.val_reward = []
 
-    def train(self, num_epoch, batch_size, num_sample):
+    def train(self, num_epoch, batch_size, num_sample, save_model=False):
         """Train DyToP model.
 
         Args:
@@ -82,7 +82,8 @@ class DyToP():
                         sum(self.val_reward[-20:-10])/10
                         - sum(self.val_reward[-10:])/10) < 0.0001:
                     break
-        self.actor.save_model()
+        if save_model:
+            self.save_model()
 
     def val(self):
         """Validating DyToP model."""
@@ -106,7 +107,7 @@ class DyToP():
         self.val_reward.append(
             rewards/(self.env.idx_stop - self.env.idx_start))
 
-    def test(self, num_admm_step, output_header, output_csv, output_dir):
+    def test(self, num_admm_step, output_header, output_placeholder, output_csv):
         """Test DyToP model.
 
         Args:
@@ -119,8 +120,7 @@ class DyToP():
         self.actor.eval()
         self.env.reset('test')
 
-        with open(output_csv, "a") as results:
-            print_(",".join(output_header), file=results)
+        with open(output_csv, "a") as resultf:
 
             runtime_list, obj_list = [], []
             loop_obj = tqdm(
@@ -153,35 +153,20 @@ class DyToP():
                     'obj': '%.4f' % (sum(obj_list)/len(obj_list)),
                     })
 
-                # save solution matrix
-                sol_mat = info['sol_mat']
-                torch.save(sol_mat, os.path.join(
-                    output_dir,
-                    "{}-{}-{}-dytop_objective-{}_{}-paths_"
-                    "edge-disjoint-{}_dist-metric-{}_sol-mat.pt".format(
-                        problem_dict['problem_name'],
-                        problem_dict['traffic_model'],
-                        problem_dict['traffic_seed'],
-                        problem_dict['obj'],
-                        problem_dict['num_path'],
-                        problem_dict['edge_disjoint'],
-                        problem_dict['dist_metric'])))
+                assert problem_dict['obj'] == 'total_flow'
 
-                PLACEHOLDER = ",".join("{}" for _ in output_header)
-                result_line = PLACEHOLDER.format(
-                    problem_dict['problem_name'],
-                    problem_dict['num_node'],
-                    problem_dict['num_edge'],
-                    problem_dict['traffic_seed'],
-                    problem_dict['scale_factor'],
-                    problem_dict['traffic_model'],
+                result_line = output_placeholder.format(
+                    problem_dict['topo_idx'],
+                    problem_dict['tm_idx'],
                     problem_dict['total_demand'],
-                    "DyToP",
-                    problem_dict['num_path'],
-                    problem_dict['edge_disjoint'],
-                    problem_dict['dist_metric'],
-                    problem_dict['obj'],
                     reward,
+                    reward / problem_dict['total_demand'],
                     runtime)
-                print_(result_line, file=results)
-                # break
+
+                print(result_line, file=resultf)
+
+    def save_model(self):
+        self.actor.save_model()
+
+    def load_model(self):
+        self.actor.load_model()
