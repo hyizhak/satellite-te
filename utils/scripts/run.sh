@@ -5,7 +5,10 @@ mkdir -p $OUTPUT_DIR
 
 RUN_TOPO_NUM=24
 
+echo $PROBLEM_LIST
+
 for problem in $PROBLEM_LIST; do
+    echo "Processing problem: $problem"
     # Run Teal
     # python ${TEAL_SCRIPT} \
     #     --problem-path ${INPUT_DIR}/${problem} \
@@ -22,3 +25,6 @@ for problem in $PROBLEM_LIST; do
         --output-dir ${OUTPUT_DIR} \
         --topo-num ${RUN_TOPO_NUM} 
 done
+
+# Copy the output directory to the specified location
+cp -r $OUTPUT_DIR ~/cloudfiles/code/Users/e1310988/satellite-te/
