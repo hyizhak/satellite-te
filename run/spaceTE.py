@@ -240,7 +240,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    update_output_path(args, 'teal')
+    update_output_path(args, 'spaceTE')
 
     if args.dry_run:
         print("Problem to run: {args.problem_path}\nWorking dir: {args.work_dir}")

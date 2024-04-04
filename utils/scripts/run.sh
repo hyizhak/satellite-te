@@ -5,7 +5,7 @@ mkdir -p $OUTPUT_DIR
 
 RUN_TOPO_NUM=24
 
-echo $PROBLEM_LIST
+echo "Problem list: $PROBLEM_LIST"
 
 for problem in $PROBLEM_LIST; do
     echo "Processing problem: $problem"
