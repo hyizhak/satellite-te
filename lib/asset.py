@@ -23,13 +23,15 @@ class AssetManager():
     
     @classmethod
     def graph_path(cls, problem_path, topo_idx, create_path=False):
-        return os.path.join(cls._data_topo_dir(problem_path, topo_idx, create_path), "graph.json")
+        return os.path.join(cls._data_topo_dir(problem_path, topo_idx, create_path), "graph.gpickle")
 
     @classmethod
     def load_graph(cls, problem_path, topo_idx) -> nx.Graph:
-        with open(cls.graph_path(problem_path, topo_idx)) as f:
-            data = json.load(f)
-        return nx.readwrite.json_graph.node_link_graph(data)
+        return nx.read_gpickle(cls.graph_path(problem_path, topo_idx))
+    
+    @classmethod
+    def save_graph_(cls, problem_path, topo_idx, G: nx.Graph):
+        nx.write_gpickle(G, cls.graph_path(problem_path, topo_idx, True))
 
     @classmethod
     def tm_train_path(cls, problem_path, topo_idx, create_path=False):

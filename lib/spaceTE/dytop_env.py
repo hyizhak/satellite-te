@@ -4,6 +4,8 @@ import os
 import math
 import time
 import random
+import numpy as np
+import networkx as nx
 from itertools import product
 
 from networkx.readwrite import json_graph
@@ -168,19 +170,35 @@ class DyToPEnv(object):
             self.p2e, self.num_path, self.num_path_node,
             self.num_edge_node, self.rho, self.device)
 
-        src, dst, capacity = [], [], []
-        for u, v, data in self.G.edges(data=True):
-            src.append(u)
-            dst.append(v)
-            capacity.append(data['capacity'])
+        # src, dst, capacity = [], [], []
+        # for u, v, data in self.G.edges(data=True):
+        #     src.append(u)
+        #     dst.append(v)
+        #     capacity.append(data['capacity'])
 
-        capacity = torch.FloatTensor(capacity).to(self.device)
+        # capacity = torch.FloatTensor(capacity).to(self.device)
 
-        # Create a DGL graph from the node tensor
-        self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
+        # # Create a DGL graph from the node tensor
+        # self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
 
-        # Add edge data (capacity) to the DGL graph
-        self.G_dgl.edata['capacity'] = capacity
+        # # Add edge data (capacity) to the DGL graph
+        # self.G_dgl.edata['capacity'] = capacity
+
+        # Extract edges and capacities
+        src, dst, capacities = zip(*[(u, v, data['capacity']) 
+                                     for u, v, data in self.G.edges(data=True)])
+
+        # Convert to PyTorch tensors
+        src_tensor = torch.tensor(src, dtype=torch.int64)
+        dst_tensor = torch.tensor(dst, dtype=torch.int64)
+        capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
+        
+
+        # Create a DGLGraph
+        self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
+
+        # Add edge data (capacity)
+        self.G_dgl.edata['capacity'] = capacities_tensor
 
         if self.idx % self.num_tm == 0:
             with open(tm_fname, 'rb') as f:
@@ -196,7 +214,7 @@ class DyToPEnv(object):
                 if i % len(tm) != i//len(tm)]).flatten().to(self.device)
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
-               "capacity": capacity,
+               "capacity": capacities_tensor,
                "traffic": tm,
                "problem": problem_G}
         # simulate link failures in testing
@@ -444,9 +462,7 @@ class DyToPEnv(object):
     def read_graph(self, topo):
         """Return network topo from json file."""
 
-        with open(topo, 'rb') as f:
-            data = json.load(f)
-        return json_graph.node_link_graph(data)
+        return nx.read_gpickle(topo)
 
     # def path_full_fname(self, topo, num_path, edge_disjoint, dist_metric):
     #     """Return full name of the topology path."""
@@ -463,7 +479,7 @@ class DyToPEnv(object):
         
         self.path_fname = path_fname = AssetManager.pathform_path(graph_path, num_path, edge_disjoint, dist_metric)
         
-        # print("Loading paths from pickle file", path_fname)
+        print("Loading paths from pickle file", path_fname)
         try:
             with open(path_fname, 'rb') as f:
                 path_dict = pickle.load(f)
@@ -558,16 +574,21 @@ class DyToPEnv(object):
     
     def create_heterograph(self, tm):
 
-        # Initialize lists to store source, destination, and flow values
-        src, dst, flow_values = [], [], []
+        # # Initialize lists to store source, destination, and flow values
+        # src, dst, flow_values = [], [], []
 
-        # Iterate through the flow array to extract non-zero flows
-        for i in range(tm.shape[0]):
-            for j in range(tm.shape[1]):
-                if tm[i][j] != 0 and i != j:
-                    src.append(i)
-                    dst.append(j)
-                    flow_values.append(tm[i][j])
+        # # Iterate through the flow array to extract non-zero flows
+        # for i in range(tm.shape[0]):
+        #     for j in range(tm.shape[1]):
+        #         if tm[i][j] != 0 and i != j:
+        #             src.append(i)
+        #             dst.append(j)
+        #             flow_values.append(tm[i][j])
+
+        tm = np.array(tm)
+
+        src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
+        flow_values = tm[src, dst]
 
         flow_use_path = [[], []]
         flow_count = 0
