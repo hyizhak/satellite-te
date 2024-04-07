@@ -4,7 +4,6 @@ AZURE_PROBLEM_DIR=/home/azureuser/cloudfiles/code/te_problems
 ALL_PROBLEM_LIST=$(cd $AZURE_PROBLEM_DIR; ls)
 
 INPUT_DIR=${PROJECT_ROOT}/input
-PROBLEM_LIST=$(cd $INPUT_DIR; ls)
 OUTPUT_DIR=${PROJECT_ROOT}/output
 
 TEAL_SCRIPT=${PROJECT_ROOT}/run/teal.py

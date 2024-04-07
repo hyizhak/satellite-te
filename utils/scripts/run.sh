@@ -5,6 +5,8 @@ mkdir -p $OUTPUT_DIR
 
 RUN_TOPO_NUM=24
 
+PROBLEM_LIST=$(cd $INPUT_DIR; ls)
+
 echo "Problem list: $PROBLEM_LIST"
 
 for problem in $PROBLEM_LIST; do
