@@ -10,20 +10,20 @@ echo "Problem list: $PROBLEM_LIST"
 for problem in $PROBLEM_LIST; do
     echo "Processing problem: $problem"
     # Run Teal
-    # python ${TEAL_SCRIPT} \
-    #     --problem-path ${INPUT_DIR}/${problem} \
-    #     --output-dir ${OUTPUT_DIR} \
-    #     --topo-num ${RUN_TOPO_NUM}
+    python ${TEAL_SCRIPT} \
+        --problem-path ${INPUT_DIR}/${problem} \
+        --output-dir ${OUTPUT_DIR} \
+        --topo-num ${RUN_TOPO_NUM}
     # # Run Gurobi
     # python ${LP_SCRIPT} \
     #     --problem-path ${OUTPUT_DIR}/${problem} \
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM}
     # Run SpaceTE (10 mins per topology/epoch)
-    nohup python ${SPACETE_SCRIPT} \
-        --problem-path ${INPUT_DIR}/${problem} \
-        --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM} 
+    # python ${SPACETE_SCRIPT} \
+    #     --problem-path ${INPUT_DIR}/${problem} \
+    #     --output-dir ${OUTPUT_DIR} \
+    #     --topo-num ${RUN_TOPO_NUM} 
 done
 
 # Copy the output directory to the specified location

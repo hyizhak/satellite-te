@@ -106,7 +106,7 @@ class Teal():
         self.val_reward.append(
             rewards/(self.env.idx_stop - self.env.idx_start))
 
-    def test(self, admm_step_num, output_header, output_placeholder, output_csv):
+    def test(self, admm_step_num, output_header, output_placeholder, output_csv, load_time):
         """Test Teal model.
 
         Args:
@@ -133,7 +133,7 @@ class Teal():
                 # get action
                 start_time = time.time()
                 raw_action = self.actor.act(obs)
-                runtime = time.time() - start_time
+                runtime = time.time() - start_time + load_time
                 # get reward
                 reward, info = self.env.step(
                     raw_action, admm_step_num=admm_step_num)

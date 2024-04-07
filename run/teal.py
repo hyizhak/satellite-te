@@ -13,7 +13,7 @@ from lib.teal import TealEnv, TealActor, Teal
 
 # ========== Benchmarking arguments
 # Benchmarking targets
-ARG_TRAIN = True
+ARG_TRAIN = False
 ARG_TEST = True
 
 
@@ -179,13 +179,15 @@ def benchmark(args):
             print(','.join(TEST_HEADERS), file=f)
             
         for idx, teal in enumerate(teal_instances):
-            if not train:
-                teal.load_model()
+            start_time = time.time()
+            teal.load_model()
+            load_time = time.time() - start_time
             teal.test(
                 admm_step_num=admm_step_num,
                 output_header=TEST_HEADERS,
                 output_placeholder=TEST_PLACEHOLDER,
                 output_csv=output_csv,
+                load_time=load_time
             )
 
     return
