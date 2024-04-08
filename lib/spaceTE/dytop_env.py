@@ -54,7 +54,7 @@ class DyToPEnv(object):
         """
 
         self.obj = obj
-        # self.topo = topo
+        self.topo = None
         self.problem_path = problem_path
         self.num_topo = num_topo
         self.num_path = num_path
@@ -155,50 +155,52 @@ class DyToPEnv(object):
 
         topo, tm_fname = self.dataset[self.idx // self.num_tm]
 
-        self.topo = topo
+        if (self.topo != topo) :
 
-        # init matrices related to topology
-        self.G = self.read_graph(topo)
-        # self.capacity = torch.FloatTensor(
-        #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
-        self.num_edge_node = len(self.G.edges)
-        self.num_path_node = self.num_path * self.G.number_of_nodes()\
-            * (self.G.number_of_nodes()-1)
-        self.edge_index, self.edge_index_values, self.p2e = \
-            self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
-        self.ADMM = ADMM(
-            self.p2e, self.num_path, self.num_path_node,
-            self.num_edge_node, self.rho, self.device)
+            self.topo = topo
 
-        # src, dst, capacity = [], [], []
-        # for u, v, data in self.G.edges(data=True):
-        #     src.append(u)
-        #     dst.append(v)
-        #     capacity.append(data['capacity'])
+            # init matrices related to topology
+            self.G = self.read_graph(topo)
+            # self.capacity = torch.FloatTensor(
+            #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
+            self.num_edge_node = len(self.G.edges)
+            self.num_path_node = self.num_path * self.G.number_of_nodes()\
+                * (self.G.number_of_nodes()-1)
+            self.edge_index, self.edge_index_values, self.p2e = \
+                self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
+            self.ADMM = ADMM(
+                self.p2e, self.num_path, self.num_path_node,
+                self.num_edge_node, self.rho, self.device)
 
-        # capacity = torch.FloatTensor(capacity).to(self.device)
+            # src, dst, capacity = [], [], []
+            # for u, v, data in self.G.edges(data=True):
+            #     src.append(u)
+            #     dst.append(v)
+            #     capacity.append(data['capacity'])
 
-        # # Create a DGL graph from the node tensor
-        # self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
+            # capacity = torch.FloatTensor(capacity).to(self.device)
 
-        # # Add edge data (capacity) to the DGL graph
-        # self.G_dgl.edata['capacity'] = capacity
+            # # Create a DGL graph from the node tensor
+            # self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
 
-        # Extract edges and capacities
-        src, dst, capacities = zip(*[(u, v, data['capacity']) 
-                                     for u, v, data in self.G.edges(data=True)])
+            # # Add edge data (capacity) to the DGL graph
+            # self.G_dgl.edata['capacity'] = capacity
 
-        # Convert to PyTorch tensors
-        src_tensor = torch.tensor(src, dtype=torch.int64)
-        dst_tensor = torch.tensor(dst, dtype=torch.int64)
-        capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
-        
+            # Extract edges and capacities
+            src, dst, capacities = zip(*[(u, v, data['capacity']) 
+                                        for u, v, data in self.G.edges(data=True)])
 
-        # Create a DGLGraph
-        self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
+            # Convert to PyTorch tensors
+            src_tensor = torch.tensor(src, dtype=torch.int64)
+            dst_tensor = torch.tensor(dst, dtype=torch.int64)
+            self.capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
+            
 
-        # Add edge data (capacity)
-        self.G_dgl.edata['capacity'] = capacities_tensor
+            # Create a DGLGraph
+            self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
+
+            # Add edge data (capacity)
+            self.G_dgl.edata['capacity'] = self.capacities_tensor
 
         if self.idx % self.num_tm == 0:
             with open(tm_fname, 'rb') as f:
@@ -214,7 +216,7 @@ class DyToPEnv(object):
                 if i % len(tm) != i//len(tm)]).flatten().to(self.device)
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
-               "capacity": capacities_tensor,
+               "capacity": self.capacities_tensor,
                "traffic": tm,
                "problem": problem_G}
         # simulate link failures in testing
@@ -479,7 +481,7 @@ class DyToPEnv(object):
         
         self.path_fname = path_fname = AssetManager.pathform_path(graph_path, num_path, edge_disjoint, dist_metric)
         
-        print("Loading paths from pickle file", path_fname)
+        # print("Loading paths from pickle file", path_fname)
         try:
             with open(path_fname, 'rb') as f:
                 path_dict = pickle.load(f)

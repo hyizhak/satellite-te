@@ -3,7 +3,7 @@ source $(dirname $(readlink -f $0))/env
 
 mkdir -p $OUTPUT_DIR
 
-RUN_TOPO_NUM=24
+RUN_TOPO_NUM=300
 
 PROBLEM_LIST=$(cd $INPUT_DIR/Iridium; ls)
 
@@ -22,7 +22,7 @@ for problem in $PROBLEM_LIST; do
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM}
     # Run SpaceTE (10 mins per topology/epoch)
-    python ${SPACETE_SCRIPT} \
+    nohup python ${SPACETE_SCRIPT} \
         --problem-path ${INPUT_DIR}/Iridium/${problem} \
         --output-dir ${OUTPUT_DIR} \
         --topo-num ${RUN_TOPO_NUM} 
