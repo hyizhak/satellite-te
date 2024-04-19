@@ -13,7 +13,7 @@ from lib.teal import TealEnv, TealActor, Teal
 
 # ========== Benchmarking arguments
 # Benchmarking targets
-ARG_TRAIN = False
+ARG_TRAIN = True
 ARG_TEST = True
 
 

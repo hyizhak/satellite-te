@@ -49,7 +49,7 @@ class DyToPActor(nn.Module):
         self.topo_gnn = topo_gnn
 
         self.num_path = self.env.num_path
-        self.num_path_node = self.env.num_path_node
+        # self.num_path_node = self.env.num_path_node
 
         self.train_id = train_id
 
@@ -99,11 +99,16 @@ class DyToPActor(nn.Module):
         logging.info('Initializing spaceTE model')
         self.apply(weight_initialization)
 
-    def load_model(self):
+    def load_model(self, quantized):
         """Load from model fname."""
-        mpath = self.model_path(True)
-        logging.info(f'Loading spaceTE model from {mpath}')
-        self.load_state_dict(torch.load(mpath, map_location=self.device))
+        if quantized :
+            mpath = self.model_path(True)
+            logging.info(f'Loading spaceTE model from {mpath}')
+            self.load_state_dict(torch.load(mpath, map_location=self.device))
+        else:
+            mpath = self.model_path(True)
+            logging.info(f'Loading spaceTE model from {mpath}')
+            self.load_state_dict(torch.load(mpath, map_location=self.device))
 
     def save_model(self):
         """Save from model fname."""
@@ -117,18 +122,6 @@ class DyToPActor(nn.Module):
             AssetManager.model_dir(self.env.work_dir, create_dir=create_dir),
             f'{self.train_id}.pt'
         )
-    
-    def load_model(self):
-        """Load from model fname."""
-        mpath = self.model_path(True)
-        logging.info(f'Loading Teal model from {mpath}')
-        self.load_state_dict(torch.load(mpath, map_location=self.device))
-
-    def save_model(self):
-        """Save from model fname."""
-        mpath = self.model_path(True)
-        logging.info(f'Saving Teal model to {mpath}')
-        torch.save(self.state_dict(), mpath)
 
     # def load_model(self):
     #     """Load from model fname."""
@@ -179,7 +172,7 @@ class DyToPActor(nn.Module):
         #     self.num_path_node//self.num_path,
         #     self.num_path*(self.FlowGNN.num_layer+1))
         x = x.reshape(
-            self.num_path_node // self.num_path, -1
+            self.env.num_path_node // self.num_path, -1
         )
         mean = self.mean_linear(x)
 

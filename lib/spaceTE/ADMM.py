@@ -85,7 +85,7 @@ class ADMM():
         self.s1 = self.l1 / self.rho \
             + (self.d - self.x.reshape(-1, self.num_path).sum(1))
         self.s3 = self.l3 / self.rho \
-            + (self.c - torch_scatter.scatter(self.z, self.p2e[1]))
+            + (self.c - torch_scatter.scatter(self.z, self.p2e[1], dim_size = self.num_edge_node))
 
         self.s1 = self.s1.relu()
         self.s3 = self.s3.relu()
@@ -164,7 +164,7 @@ class ADMM():
         self.l1 = self.l1 + self.rho * (
             self.d - self.x.reshape(-1, self.num_path).sum(1) - self.s1)
         self.l3 = self.l3 + self.rho * (
-            self.c - torch_scatter.scatter(self.z, self.p2e[1]) - self.s3)
+            self.c - torch_scatter.scatter(self.z, self.p2e[1], dim_size = self.num_edge_node) - self.s3)
         self.l4 = self.l4 + self.rho * (
             self.x[self.p2e[0]] - self.z)
 

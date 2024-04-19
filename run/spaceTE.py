@@ -13,8 +13,8 @@ from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
 
 # ========== Benchmarking arguments
 # Benchmarking targets
-ARG_TRAIN = True
-ARG_TEST = True
+ARG_TRAIN = False
+ARG_TEST = False
 
 
 def benchmark(args):
@@ -65,6 +65,8 @@ def benchmark(args):
     admm_step_num = args.admm_steps
     # testing hyper-parameters
     num_failure = args.failures
+    quantized = args.quantized
+    compiled = args.compiled
     # output
     work_dir = args.work_dir
 
@@ -163,14 +165,15 @@ def benchmark(args):
         
     # ========== test  
     if test:
+        test_id = train_id + f'_quantized-{quantized}_compiled-{compiled}'
         test_log_dir = AssetManager.test_log_dir(work_dir, create_dir=True)
-        output_csv = os.path.join(test_log_dir, f'{train_id}.csv')
+        output_csv = os.path.join(test_log_dir, f'{test_id}.csv')
 
         with open(output_csv, 'w') as f:
             print(','.join(TEST_HEADERS), file=f)
             
         if not train:
-            dytop.load_model()
+            dytop.load_model(quantized, compiled)
         dytop.test(
             num_admm_step=admm_step_num,
             output_header=TEST_HEADERS,
@@ -204,8 +207,8 @@ if __name__ == '__main__':
     parser.add_argument("--dry-run", dest="dry_run", default=False, action="store_true", help="list problems to run")
     parser.add_argument("--obj", type=str, default=ARG_OBJ, choices=OBJ_STRS, help="objective function")
 
-    parser.add_argument("--train", type=bool, default=ARG_TRAIN)
-    parser.add_argument("--test", type=bool, default=ARG_TEST)
+    parser.add_argument("--train", action="store_true")
+    parser.add_argument("--test", action="store_true")
     
     # output parameters
     parser.add_argument("--output-dir", type=str, default=ARG_OUTPUT_DIR)
@@ -237,6 +240,8 @@ if __name__ == '__main__':
 
     # testing hyper-parameters
     parser.add_argument('--failures', type=int, default=0, help='number of edge failures')
+    parser.add_argument('--quantized', action="store_true", help='whether to quantize the model')
+    parser.add_argument('--compiled', action="store_true", help='whether to JIT-compile the model')
 
     args = parser.parse_args()
 

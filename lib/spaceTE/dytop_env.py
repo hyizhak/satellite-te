@@ -164,13 +164,7 @@ class DyToPEnv(object):
             # self.capacity = torch.FloatTensor(
             #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
             self.num_edge_node = len(self.G.edges)
-            self.num_path_node = self.num_path * self.G.number_of_nodes()\
-                * (self.G.number_of_nodes()-1)
-            self.edge_index, self.edge_index_values, self.p2e = \
-                self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
-            self.ADMM = ADMM(
-                self.p2e, self.num_path, self.num_path_node,
-                self.num_edge_node, self.rho, self.device)
+            
 
             # src, dst, capacity = [], [], []
             # for u, v, data in self.G.edges(data=True):
@@ -208,12 +202,11 @@ class DyToPEnv(object):
         
         tm = self.tms[self.idx % self.num_tm]
 
-        problem_G = self.create_heterograph(tm)
+        problem_G = self.create_heterograph(topo, tm)
         
-        # remove demands within nodes
-        tm = torch.FloatTensor(
-            [[ele]*self.num_path for i, ele in enumerate(tm.flatten())
-                if i % len(tm) != i//len(tm)]).flatten().to(self.device)
+        # remove demands within nodes and 0 demands
+        tm = torch.FloatTensor(self.flow_values).flatten().to(self.device)
+        tm = torch.repeat_interleave(tm, self.num_path)
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
                "capacity": self.capacities_tensor,
@@ -345,7 +338,7 @@ class DyToPEnv(object):
             for round_iter in range(num_round_iter):
                 # flow on each edge
                 edge_flow = torch_scatter.scatter(
-                    path_flow[self.p2e[0]], self.p2e[1])
+                    path_flow[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)
                 # util of each edge
                 util = 1 + (edge_flow/capacity-1).relu()
                 # propotionally cut path flow by max util
@@ -356,7 +349,7 @@ class DyToPEnv(object):
                 path_flow_allocated_total += path_flow_allocated
                 if round_iter != num_round_iter - 1:
                     capacity = (capacity - torch_scatter.scatter(
-                        path_flow_allocated[self.p2e[0]], self.p2e[1])).relu()
+                        path_flow_allocated[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)).relu()
                     path_flow = path_flow - path_flow_allocated
             action = path_flow_allocated_total
 
@@ -384,7 +377,7 @@ class DyToPEnv(object):
         '''
 
         path_flow = self.transform_raw_action(raw_action)
-        edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1])
+        edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)
         util = edge_flow/self.obs['capacity']
 
         # sample from uniform distribution [mean_min, min_max]
@@ -404,7 +397,7 @@ class DyToPEnv(object):
             coef = path_flow/util**2
             coef[util < 1] = 0
             coef = torch_scatter.scatter(
-                coef, path_bottleneck).reshape(-1, 1)
+                coef, path_bottleneck, dim_size=self.num_edge_node).reshape(-1, 1)
 
             # prepare path_util to bottleneck edge_util
             bottleneck_p2e = torch.sparse_coo_tensor(
@@ -574,7 +567,7 @@ class DyToPEnv(object):
 
         return edge_index, edge_index_values, p2e
     
-    def create_heterograph(self, tm):
+    def create_heterograph(self, topo, tm):
 
         # # Initialize lists to store source, destination, and flow values
         # src, dst, flow_values = [], [], []
@@ -591,25 +584,64 @@ class DyToPEnv(object):
 
         src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
         flow_values = tm[src, dst]
+        self.flow_values = flow_values
+
+        self.num_path_node = self.num_path * len(flow_values)
+        # self.edge_index, self.edge_index_values, self.p2e = \
+        #         self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
+
+        # get regular path dict
+        path_dict = self.get_regular_path(
+            topo, self.num_path, self.edge_disjoint, self.dist_metric)
+        
+        self.paths = path_dict
+
+        # edge nodes' degree, index lookup
+        edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
+        node2degree_dict = {}
+        edge_num = len(self.G.edges)
 
         flow_use_path = [[], []]
         flow_count = 0
+        src_list, dst_list = [], []
+
         path_values = [0] * self.num_path_node
         for (src, dst) in zip(src, dst):
             flow_use_path[0] += [flow_count] * len(self.paths.get((src, dst), []))
-            index = self.num_path * ((self.G.number_of_nodes() - 1) * src + dst) if src > dst \
-                else self.num_path * ((self.G.number_of_nodes() - 1) * src + dst - 1)
+            # index = self.num_path * ((self.G.number_of_nodes() - 1) * src + dst) if src > dst \
+            #     else self.num_path * ((self.G.number_of_nodes() - 1) * src + dst - 1)
+            index = flow_count * self.num_path
             flow_use_path[1] += list(range(index, index + self.num_path))
             flow_count += 1
 
             for i, path in enumerate(self.paths.get((src, dst), [])):
-                try:
-                    path_values[index+i] = len(path)
-                except Exception as e:
-                    print(src)
-                    print(dst)
-                    print(index+i)
-                    print(self.num_path_node)
+                path_values[index+i] = len(path)
+                path_i = index + i
+
+                for (u, v) in zip(path[:-1], path[1:]):
+                    src_list.append(edge_num+path_i)
+                    dst_list.append(edge2idx_dict[(u, v)])
+
+                    if src_list[-1] not in node2degree_dict:
+                        node2degree_dict[src_list[-1]] = 0
+                    node2degree_dict[src_list[-1]] += 1
+                    if dst_list[-1] not in node2degree_dict:
+                        node2degree_dict[dst_list[-1]] = 0
+                    node2degree_dict[dst_list[-1]] += 1
+
+        # edge_index is D^(-0.5)*(adj)*D^(-0.5) without self-loop
+        self.edge_index_values = torch.tensor(
+            [1/math.sqrt(node2degree_dict[u]*node2degree_dict[v])
+                for u, v in zip(src_list+dst_list, dst_list+src_list)]).to(self.device)
+        self.edge_index = torch.tensor(
+            [src_list+dst_list, dst_list+src_list], dtype=torch.long).to(self.device)
+        p2e = torch.tensor([src_list, dst_list], dtype=torch.long).to(self.device)
+        p2e[0] -= edge_num
+        self.p2e = p2e
+
+        self.ADMM = ADMM(
+                self.p2e, self.num_path, self.num_path_node,
+                self.num_edge_node, self.rho, self.device)
 
         flow_use_path = tuple(torch.tensor(sublist).to(self.device) for sublist in flow_use_path)
 
@@ -623,6 +655,8 @@ class DyToPEnv(object):
         num_nodes_dict = {'flow': len(flow_values), 
                       'path': self.num_path_node,
                       'link': self.num_edge_node}
+        
+        # print(num_nodes_dict)
 
         G = dgl.heterograph(data_dict=graph_data, num_nodes_dict=num_nodes_dict)
 
