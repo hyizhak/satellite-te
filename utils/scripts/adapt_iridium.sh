@@ -7,7 +7,7 @@ OUTPUT_DIR=/mnt/output
 TEST_RATIO=0.15
 
 for intensity in 5 7p5 10; do
-    python ${ADAPTER_SCRIPT} \
+    python ${IRIDIUM_ADAPTER_SCRIPT} \
         --input-path ${INPUT_DIR}/IridiumDataSet14day20sec_Int${intensity} \
         --output-path ${OUTPUT_DIR}
 done

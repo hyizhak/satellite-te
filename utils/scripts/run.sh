@@ -5,11 +5,13 @@ mkdir -p $OUTPUT_DIR
 
 RUN_TOPO_NUM=300
 
-PROBLEM_LIST=$(cd $INPUT_DIR/Iridium; ls)
+# PROBLEM_LIST=$(cd $INPUT_DIR/Iridium; ls)
 
-echo "Problem list: $PROBLEM_LIST"
+PROBLEM_LIST=("IridiumDataSet14day20sec_Int5" "IridiumDataSet14day20sec_Int7p5")
 
-for problem in $PROBLEM_LIST; do
+echo "Problem list: ${PROBLEM_LIST[@]}"
+
+for problem in "${PROBLEM_LIST[@]}"; do
     echo "Processing problem: $problem"
     # Run Teal
     # python ${TEAL_SCRIPT} \

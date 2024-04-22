@@ -11,3 +11,4 @@ LP_SCRIPT=${PROJECT_ROOT}/run/lp.py
 SPACETE_SCRIPT=${PROJECT_ROOT}/run/spaceTE.py
 
 IRIDIUM_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/iridium/adapter.py
+STARLINK_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/starlink/adapt_starlink.py
