@@ -7,10 +7,17 @@ import os
 from tqdm import tqdm
 
 from ...asset import AssetManager
-from . import multi_shell_graph as MSG
-from .pathform import StarlinkPathFormer
 from .ism import InterShellMode as ISM
 from .user_node import generate_sat2user, generate_user2sat, generate_is_user
+
+import numpy as np
+from . import MultiShellGraph as MSG
+import pickle
+import time
+import copy
+import networkx as nx
+import scipy.io as sio
+from . import SPOnGrid as SPG
 
 class StarlinkAdapter():
     
@@ -32,6 +39,8 @@ class StarlinkAdapter():
     def adapt(self, output_path):
         if os.path.exists(output_path):
             shutil.rmtree(output_path)
+        
+        os.makedirs(output_path)
         
         args = []
         for i in self.file_volume:
@@ -83,101 +92,114 @@ class StarlinkAdapter():
 
         train_num = int(data_num * (1 - test_ratio))
 
+        starlink_dataset = []
+
         for k in tqdm(range(data_num)):
             
             data = pickle.load(file)
+
+            G_interShell = data['InterShell_GrdRelay']
+            ISL_interShell = data['InterShell_ISL']
             
-            # 1. Save pathform metadata
-            meta = StarlinkPathFormer.create_metadata(Offset5, GrdStationNum, data['InterShell_GrdRelay'], data['InterShell_ISL'])
-            AssetManager.save_pathform_metadata_(output_path, file_idx, k, meta)
+            # # 1. Save pathform metadata
+            # meta = StarlinkPathFormer.create_metadata(Offset5, GrdStationNum, data['InterShell_GrdRelay'], data['InterShell_ISL'])
+
+            # AssetManager.save_pathform_metadata_(output_path, file_idx, k, meta)
             
             # 2. Cerate the topology
             match ism:
                 case ISM.GRD_STATION:
-                    G_interShell = data['InterShell_GrdRelay']
                     E_inter = []
                     for SatIndex in range(len(G_interShell)):
                         E_inter.append([SatIndex, int(G_interShell[SatIndex] + Offset5)])
                         E_inter.append([int(G_interShell[SatIndex] + Offset5), SatIndex])
                     graph_node_num = Offset5 * 2 + GrdStationNum
 
+                    
+
                 case _:
-                    raise NotImplementedError()
-                    ISL_interShell = data['InterShell_ISL']
                     E_inter = []
-                    for SatIndex in range(len(ISL_interShell[0])):
-                        E_inter.append([SatIndex, int(ISL_interShell[0][SatIndex] + Offset2)])
-                        E_inter.append([int(ISL_interShell[0][SatIndex] + Offset2), SatIndex])
+                    for SatIndex in range(len(ISL_interShell[0])): # 2 to 1
+                        S2 = SatIndex + Offset2 
+                        S1 = int(ISL_interShell[0][SatIndex])
+                        E_inter.append([S2, S1])
+                        E_inter.append([S1, S2])
                     
-                    for SatIndex in range(len(ISL_interShell[1])):
-                        E_inter.append([int(SatIndex + Offset2), int(ISL_interShell[1][SatIndex] + Offset3)])
-                        E_inter.append([int(ISL_interShell[1][SatIndex] + Offset3), int(SatIndex + Offset2)])
+                    for SatIndex in range(len(ISL_interShell[1])): # 3 to 2
+                        S3 = int(SatIndex + Offset3)
+                        S2 = int(ISL_interShell[1][SatIndex] + Offset2)
+                        E_inter.append([S3, S2])
+                        E_inter.append([S2, S3])
                     
-                    for SatIndex in range(len(ISL_interShell[2])):
-                        E_inter.append([int(SatIndex + Offset3), int(ISL_interShell[2][SatIndex] + Offset4)])
-                        E_inter.append([int(ISL_interShell[2][SatIndex] + Offset4), int(SatIndex + Offset3)])
+                    for SatIndex in range(len(ISL_interShell[2])): # 4 to 3
+                        S4 = int(SatIndex + Offset4)
+                        S3 = int(ISL_interShell[2][SatIndex] + Offset3)
+                        E_inter.append([S4, S3])
+                        E_inter.append([S3, S4])
                     graph_node_num = Offset5 * 2
                     
             sat2user = generate_sat2user(satellite_num, GrdStationNum, ism)
             
             E = E1 + E2 + E3 + E4 + E_inter
-            G = nx.DiGraph()
-            G.add_nodes_from(range(graph_node_num))
-            ## 1. Inter-satellite links
-            for e in E:
-                G.add_edge(e[0], e[1], capacity=isl_cap)
-            ## 2. User-satellite links
-            for i in range(satellite_num):
-                # Uplink
-                G.add_edge(sat2user(i), i, capacity=uplink_cap)
-                # Downlink
-                G.add_edge(i, sat2user(i), capacity=downlink_cap)
-            ## 3. Inter ground station links
-            for i in range(GrdStationNum):
-                for j in range(GrdStationNum):
-                    if i == j:
-                        continue
-                    G.add_edge(i + Offset5, j + Offset5, capacity=0)
-                    G.add_edge(j + Offset5, i + Offset5, capacity=0)
+            # G = nx.DiGraph()
+            # G.add_nodes_from(range(graph_node_num))
+            # ## 1. Inter-satellite links
+            # for e in E:
+            #     G.add_edge(e[0], e[1], capacity=isl_cap)
+            # ## 2. User-satellite links
+            # for i in range(satellite_num):
+            #     # Uplink
+            #     G.add_edge(sat2user(i), i, capacity=uplink_cap)
+            #     # Downlink
+            #     G.add_edge(i, sat2user(i), capacity=downlink_cap)
+            # ## 3. Inter ground station links
+            # for i in range(GrdStationNum):
+            #     for j in range(GrdStationNum):
+            #         if i == j:
+            #             continue
+            #         G.add_edge(i + Offset5, j + Offset5, capacity=0)
+            #         G.add_edge(j + Offset5, i + Offset5, capacity=0)
                 
-            AssetManager.save_graph_(output_path, file_idx, k, G)
+            # AssetManager.save_graph_(output_path, file_idx, k, G)
 
              # 3. Create traffic matrices
-            demand_dict = {}
+
+            tm_dict = {}
+            path_dict = {}
             
             flowset = data['FlowSet']
+
             for flow in flowset:
                 src = sat2user(flow[0])
                 dst = sat2user(flow[1])
                 d = flow[2]
+
+                paths = SPG.SPOnGrid(flow[0],flow[1],
+                        G_interShell, 
+                        ISL_interShell, 
+                        ism, 
+                        5)  
                 
-                outer = demand_dict.get(src, {})
-                inner = outer.get(dst, 0)
-                outer[dst] = inner + d
-                demand_dict[src] = outer
-            
-            edge_list = []
-            weight_list = []
-            
-            for src, inner in demand_dict.items():
-                for dst, amount in inner.items():
-                    edge_list.append([src, dst])
-                    weight_list.append(amount)
-                
-            demand_matrix = {
-                'size': graph_node_num,
-                'edge_list': np.array(edge_list, dtype=np.uint16),
-                'weight_list': np.array(weight_list, dtype=np.float32),
-            }
+                path_dict[(src, dst)] = [[src] + path + [dst] for path in paths]
+                tm_dict[(src, dst)] = d
+
+            data_idx = k if file_idx == "A" else 5000 + k
                             
-            if k < train_num:
-                AssetManager.save_tm_train_separate_(output_path, k if file_idx == "A" else 5000 + k, 0, demand_matrix)
-            elif k < data_num:
-                AssetManager.save_tm_test_separate_(output_path, k - train_num if file_idx == "A" else 5000 + k - train_num, 0, demand_matrix)
-            else:
-                break;
+            # if k < train_num:
+            #     # AssetManager.save_tm_train_separate_(output_path, k if file_idx == "A" else 5000 + k, 0, demand_matrix)
+            #     starlink_dataset.append({'graph': E, 'tm': demand_matrix, 'meta': meta, 'data_idx': data_idx, 'train': True})
+            # elif k < data_num:
+            #     # AssetManager.save_tm_test_separate_(output_path, k - train_num if file_idx == "A" else 5000 + k - train_num, 0, demand_matrix)
+            #     starlink_dataset.append({'graph': E, 'tm': demand_matrix, 'meta': meta, 'data_idx': data_idx, 'train': False})
+            # else:
+            #     break;
+
+            starlink_dataset.append({'graph': E, 'tm': tm_dict, 'path': path_dict, 'data_idx': data_idx})
 
         file.close()
+
+        AssetManager.save_starlink_dataset_(output_path, os.path.basename(file_path), starlink_dataset)
+
             
         
         

@@ -61,7 +61,7 @@ def SPBetweenGrd(g1, g2, G_interShell, Offset, pathN):
     G_MM = G_interShell[0:72*22]
     s1 = G_MM.index(g1_x)
     s2 = G_MM.index(g2_x)
-    Path = LGP.k_shortest_path_loop_grid(s1, 
+    Path = LGP.k_shortest_path_intra_shell(s1, 
                                          s2, 
                                          0, 
                                          72, 
@@ -75,7 +75,7 @@ def SatOverGrdStation(grd, G_interShell):
     if grd in G_interShell:
         return G_interShell.index(grd)    
     else:
-        return None
+        return 'Disconnected'
 
 def SPOnGrid(src, des, G_interShell, ISL_interShell, mode, pathN):
     Offset = [0, 1584, 3168, 3516, 4236]
@@ -93,7 +93,7 @@ def SPOnGrid(src, des, G_interShell, ISL_interShell, mode, pathN):
         #                                      OrbitN[Lsrc], 
         #                                      SatN[Lsrc], 
         #                                      pathN))
-        return LGP.k_shortest_path_loop_grid(src, 
+        return LGP.k_shortest_path_intra_shell(src, 
                                              des, 
                                              OffSD, 
                                              OrbitN[Lsrc], 
@@ -129,37 +129,37 @@ def SPOnGrid(src, des, G_interShell, ISL_interShell, mode, pathN):
             OffD = Offset[Ldes]
             PathComplete = []
             if  Lsrc < Ldes:
-                PathIntra_High = LGP.k_shortest_path_loop_grid(Inter2 + OffD, 
+                PathIntra_High = LGP.k_shortest_path_intra_shell(Inter2 + OffD, 
                                                                des, 
                                                                OffD, 
                                                                OrbitN[Ldes], 
                                                                SatN[Ldes], 
                                                                1)               
                 # print([src - OffS, Inter, OffS, OrbitN[Lsrc], SatN[Lsrc], pathN])
-                PathIntra = LGP.k_shortest_path_loop_grid(src, 
+                PathIntra = LGP.k_shortest_path_intra_shell(src, 
                                                           Inter + OffS, 
                                                           OffS, 
                                                           OrbitN[Lsrc], 
                                                           SatN[Lsrc], 
                                                           pathN)
                 for p in PathIntra:
-                    PathComplete.append(p+[GS + Offset[4]]+PathIntra_High[0])
+                    PathComplete.append(p+[int(GS + Offset[4])]+PathIntra_High[0])
                 return PathComplete
             else:
-                PathIntra_High = LGP.k_shortest_path_loop_grid(src, 
+                PathIntra_High = LGP.k_shortest_path_intra_shell(src, 
                                                                Inter2 + OffS, 
                                                                OffS, 
                                                                OrbitN[Lsrc], 
                                                                SatN[Lsrc], 
                                                                1)
-                PathIntra = LGP.k_shortest_path_loop_grid(Inter + OffD, 
+                PathIntra = LGP.k_shortest_path_intra_shell(Inter + OffD, 
                                                           des, 
                                                           OffD, 
                                                           OrbitN[Ldes], 
                                                           SatN[Ldes], 
                                                           pathN)
                 for p in PathIntra:
-                    PathComplete.append(PathIntra_High[0] + [GS + Offset[4]] + p)
+                    PathComplete.append(PathIntra_High[0] + [int(GS + Offset[4])] + p)
                 return PathComplete
         else:
             if Lsrc > Ldes:
@@ -175,7 +175,7 @@ def SPOnGrid(src, des, G_interShell, ISL_interShell, mode, pathN):
                 SubSrc = PathCross.pop(-1)
                 OffD = Offset[Ldes]              
                 # print([SubSrc, des, OffD, OrbitN[Ldes], SatN[Ldes], pathN])
-                PathIntra = LGP.k_shortest_path_loop_grid(SubSrc, 
+                PathIntra = LGP.k_shortest_path_intra_shell(SubSrc, 
                                                           des, 
                                                           OffD, 
                                                           OrbitN[Ldes], 
@@ -200,7 +200,7 @@ def SPOnGrid(src, des, G_interShell, ISL_interShell, mode, pathN):
                 PathCross.reverse()
                 OffS = Offset[Lsrc]
                 # print([src, SubSrc, OffS, OrbitN[Lsrc], SatN[Lsrc], pathN])
-                PathIntra = LGP.k_shortest_path_loop_grid(src, 
+                PathIntra = LGP.k_shortest_path_intra_shell(src, 
                                                           SubSrc, 
                                                           OffS, 
                                                           OrbitN[Lsrc], 

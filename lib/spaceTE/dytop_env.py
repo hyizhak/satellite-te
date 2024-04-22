@@ -16,6 +16,8 @@ import torch_scatter
 import torch.nn as nn
 from torch.distributions.normal import Normal
 from torch.distributions.uniform import Uniform
+from lib.data.starlink.user_node import generate_sat2user
+from lib.data.starlink.orbit_params import OrbitParams
 
 from .. import AssetManager
 from .ADMM import ADMM
@@ -28,12 +30,8 @@ class DyToPEnv(object):
             self, obj, problem_path,
             num_path, edge_disjoint, dist_metric, rho,
             num_failure, device,
-            work_dir, num_topo,
-            train_all=True,
-            val_ratio=None,
-            train_size=None, val_size=None,
-            test_all=True,
-            test_size=None,
+            work_dir, dataset,
+            orbit_params=None,
             raw_action_min=-10.0, raw_action_max=10.0):
         """Initialize DyToP environment.
 
@@ -54,27 +52,11 @@ class DyToPEnv(object):
         """
 
         self.obj = obj
-        self.topo = None
+        self.orbit_params = orbit_params
         self.problem_path = problem_path
-        self.num_topo = num_topo
         self.num_path = num_path
         self.edge_disjoint = edge_disjoint
         self.dist_metric = dist_metric
-
-        if train_all and val_ratio is None:
-            raise ValueError("val_ratio is reuqired.")
-        elif (not train_all) and (train_size is None or val_size is None):
-            raise ValueError("train_size and val_size are required.")
-
-        self.train_all = train_all
-        self.val_ratio = val_ratio
-        self.train_size = train_size
-        self.val_size = val_size
-        
-        if not test_all and test_size is None:
-            raise ValueError("test_size is required")
-        self.test_all = test_all
-        self.test_size = test_size
         
         self.work_dir = work_dir
 
@@ -103,11 +85,7 @@ class DyToPEnv(object):
         self.raw_action_max = raw_action_max
         
         # prepare the dataset
-        self.train_dataset = [(AssetManager.graph_path(problem_path, idx), AssetManager.tm_train_path(problem_path, idx)) for idx in range(num_topo)]
-        random.shuffle(self.train_dataset)
-
-        self.test_dataset = [(AssetManager.graph_path(problem_path, idx), AssetManager.tm_test_path(problem_path, idx)) for idx in range(num_topo)]
-        random.shuffle(self.test_dataset)
+        self.split_dataset = dataset.train_test_split(test_size=0.2)
 
         self.mode = None
         self.reset('train')
@@ -118,31 +96,13 @@ class DyToPEnv(object):
         self.mode = mode
 
         if (mode == 'train' or mode == 'validate'):
-            self.dataset = self.train_dataset
+            self.dataset = self.split_dataset['train']
         elif mode == 'test':
-            self.dataset = self.test_dataset
+            self.dataset = self.split_dataset['test']
 
-        with open(self.dataset[0][1], 'rb') as f:
-            tm_sample = pickle.load(f)
+        self.idx_stop = len(self.dataset)
 
-        if mode == 'train':
-            if self.train_all:
-                self.idx_start, self.idx_stop = 0, int(tm_sample.shape[0] * (1 - self.val_ratio)) * self.num_topo
-            else:
-                self.idx_start, self.idx_stop = 0, self.train_size
-        elif mode == 'val':
-            if self.train_all:
-                self.idx_start, self.idx_stop = int(tm_sample.shape[0] * (1 - self.val_ratio)) * self.num_topo, tm_sample.shape[0]
-            else:
-                self.idx_start, self.idx_stop = self.train_size, self.train_size + self.val_size
-        else:
-            if self.test_all:
-                self.idx_start, self.idx_stop = 0, tm_sample.shape[0] * self.num_topo
-            else:
-                self.idx_start, self.idx_stop = 0, self.test_size
-            
-        self.num_tm = tm_sample.shape[0]
-        self.idx = self.idx_start
+        self.idx = 0
         self.obs = self._read_obs()
 
     def get_obs(self):
@@ -153,56 +113,46 @@ class DyToPEnv(object):
     def _read_obs(self):
         """Return observation (capacity + traffic matrix) from files."""
 
-        topo, tm_fname = self.dataset[self.idx // self.num_tm]
+        # {'graph': E, 'tm': tm_dict, 'path': path_dict, 'data_idx': data_idx}
+        data = self.dataset[self.idx]
 
-        if (self.topo != topo) :
-
-            self.topo = topo
-
-            # init matrices related to topology
-            self.G = self.read_graph(topo)
-            # self.capacity = torch.FloatTensor(
-            #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
-            self.num_edge_node = len(self.G.edges)
-            
-
-            # src, dst, capacity = [], [], []
-            # for u, v, data in self.G.edges(data=True):
-            #     src.append(u)
-            #     dst.append(v)
-            #     capacity.append(data['capacity'])
-
-            # capacity = torch.FloatTensor(capacity).to(self.device)
-
-            # # Create a DGL graph from the node tensor
-            # self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
-
-            # # Add edge data (capacity) to the DGL graph
-            # self.G_dgl.edata['capacity'] = capacity
-
-            # Extract edges and capacities
-            src, dst, capacities = zip(*[(u, v, data['capacity']) 
-                                        for u, v, data in self.G.edges(data=True)])
-
-            # Convert to PyTorch tensors
-            src_tensor = torch.tensor(src, dtype=torch.int64)
-            dst_tensor = torch.tensor(dst, dtype=torch.int64)
-            self.capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
-            
-
-            # Create a DGLGraph
-            self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
-
-            # Add edge data (capacity)
-            self.G_dgl.edata['capacity'] = self.capacities_tensor
-
-        if self.idx % self.num_tm == 0:
-            with open(tm_fname, 'rb') as f:
-                self.tms = pickle.load(f)
+        # init matrices related to topology
+        self.G = self.construct_from_edge(data['graph'])
+        # self.capacity = torch.FloatTensor(
+        #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
+        self.num_edge_node = len(self.G.edges)
         
-        tm = self.tms[self.idx % self.num_tm]
+        # src, dst, capacity = [], [], []
+        # for u, v, data in self.G.edges(data=True):
+        #     src.append(u)
+        #     dst.append(v)
+        #     capacity.append(data['capacity'])
 
-        problem_G = self.create_heterograph(topo, tm)
+        # capacity = torch.FloatTensor(capacity).to(self.device)
+
+        # # Create a DGL graph from the node tensor
+        # self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
+
+        # # Add edge data (capacity) to the DGL graph
+        # self.G_dgl.edata['capacity'] = capacity
+
+        # Extract edges and capacities
+        src, dst, capacities = zip(*[(u, v, data['capacity']) 
+                                    for u, v, data in self.G.edges(data=True)])
+
+        # Convert to PyTorch tensors
+        src_tensor = torch.tensor(src, dtype=torch.int64)
+        dst_tensor = torch.tensor(dst, dtype=torch.int64)
+        self.capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
+        
+
+        # Create a DGLGraph
+        self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
+
+        # Add edge data (capacity)
+        self.G_dgl.edata['capacity'] = self.capacities_tensor
+
+        problem_G = self.create_heterograph(data, tm)
         
         # remove demands within nodes and 0 demands
         tm = torch.FloatTensor(self.flow_values).flatten().to(self.device)
@@ -226,18 +176,17 @@ class DyToPEnv(object):
 
         self.idx += 1
         if self.idx == self.idx_stop:
-            self.idx = self.idx_start
+            self.idx = 0
         self.obs = self._read_obs()
         return self.obs
 
     def render(self):
         """Return a dictionary for the details of the current problem"""
 
-        topo, tm_fname = self.dataset[self.idx // self.num_tm]
         problem_dict = {
             'problem_path': self.problem_path,
             'obj': self.obj,
-            'topo_idx': self.topo.split('/')[-2].split('_')[-1],
+            'topo_idx': self.idx,
             'tm_idx': self.idx,
             'num_node': self.G.number_of_nodes(),
             'num_edge': self.G.number_of_edges(),
@@ -567,7 +516,7 @@ class DyToPEnv(object):
 
         return edge_index, edge_index_values, p2e
     
-    def create_heterograph(self, topo, tm):
+    def create_heterograph(self, data):
 
         # # Initialize lists to store source, destination, and flow values
         # src, dst, flow_values = [], [], []
@@ -580,21 +529,20 @@ class DyToPEnv(object):
         #             dst.append(j)
         #             flow_values.append(tm[i][j])
 
-        tm = np.array(tm)
-
-        src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
-        flow_values = tm[src, dst]
+        src = [src for src, dst in data['tm'].keys()]
+        dst = [dst for src, dst in data['tm'].keys()]
+        flow_values = [data['tm'][(src, dst)] for src, dst in data['tm'].keys()]
         self.flow_values = flow_values
+
+        # src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
+        # flow_values = tm[src, dst]
+        # self.flow_values = flow_values
 
         self.num_path_node = self.num_path * len(flow_values)
         # self.edge_index, self.edge_index_values, self.p2e = \
         #         self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
-
-        # get regular path dict
-        path_dict = self.get_regular_path(
-            topo, self.num_path, self.edge_disjoint, self.dist_metric)
         
-        self.paths = path_dict
+        self.paths = data['path']
 
         # edge nodes' degree, index lookup
         edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
@@ -656,7 +604,7 @@ class DyToPEnv(object):
                       'path': self.num_path_node,
                       'link': self.num_edge_node}
         
-        # print(num_nodes_dict)
+        print(num_nodes_dict)
 
         G = dgl.heterograph(data_dict=graph_data, num_nodes_dict=num_nodes_dict)
 
@@ -664,6 +612,30 @@ class DyToPEnv(object):
         G.nodes['path'].data['x'] = torch.Tensor(path_values).to(self.device)
 
         return G
+    
+
+    def construct_from_edge(self, edge_list):
+        params = self.orbit_params
+        """Construct a networkx graph from a list of edges."""
+        sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
+        G = nx.DiGraph()
+        G.add_nodes_from(range(params.graph_node_num))
+        ## 1. Inter-satellite links
+        for e in edge_list:
+            G.add_edge(e[0], e[1], capacity=params.isl_cap)
+        ## 2. User-satellite links
+        for i in range(params.satellite_num):
+            # Uplink
+            G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
+            # Downlink
+            G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
+        ## 3. Inter ground station links
+        for i in range(params.GrdStationNum):
+            for j in range(params.GrdStationNum):
+                if i == j:
+                    continue
+                G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
+                G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
 
 
     def extract_sol_mat(self, action):
