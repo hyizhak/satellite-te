@@ -9,6 +9,7 @@ import networkx as nx
 from itertools import product
 
 from networkx.readwrite import json_graph
+from sklearn.model_selection import train_test_split
 import dgl
 
 import torch
@@ -85,7 +86,7 @@ class DyToPEnv(object):
         self.raw_action_max = raw_action_max
         
         # prepare the dataset
-        self.split_dataset = dataset.train_test_split(test_size=0.2)
+        self.train_dataset, self.test_dataset = train_test_split(dataset, test_size=0.2, random_state=42)
 
         self.mode = None
         self.reset('train')
@@ -96,9 +97,9 @@ class DyToPEnv(object):
         self.mode = mode
 
         if (mode == 'train' or mode == 'validate'):
-            self.dataset = self.split_dataset['train']
+            self.dataset = self.train_dataset
         elif mode == 'test':
-            self.dataset = self.split_dataset['test']
+            self.dataset = self.test_dataset
 
         self.idx_stop = len(self.dataset)
 
@@ -137,8 +138,8 @@ class DyToPEnv(object):
         # self.G_dgl.edata['capacity'] = capacity
 
         # Extract edges and capacities
-        src, dst, capacities = zip(*[(u, v, data['capacity']) 
-                                    for u, v, data in self.G.edges(data=True)])
+        src, dst, capacities = zip(*[(u, v, edata['capacity']) 
+                                    for u, v, edata in self.G.edges(data=True)])
 
         # Convert to PyTorch tensors
         src_tensor = torch.tensor(src, dtype=torch.int64)
@@ -152,7 +153,7 @@ class DyToPEnv(object):
         # Add edge data (capacity)
         self.G_dgl.edata['capacity'] = self.capacities_tensor
 
-        problem_G = self.create_heterograph(data, tm)
+        problem_G = self.create_heterograph(data)
         
         # remove demands within nodes and 0 demands
         tm = torch.FloatTensor(self.flow_values).flatten().to(self.device)
@@ -529,9 +530,9 @@ class DyToPEnv(object):
         #             dst.append(j)
         #             flow_values.append(tm[i][j])
 
-        src = [src for src, dst in data['tm'].keys()]
-        dst = [dst for src, dst in data['tm'].keys()]
-        flow_values = [data['tm'][(src, dst)] for src, dst in data['tm'].keys()]
+        src = [int(key.split(', ')[0]) for key in data['tm'].keys()]
+        dst = [int(key.split(', ')[1]) for key in data['tm'].keys()]
+        flow_values = list(data['tm'].values())
         self.flow_values = flow_values
 
         # src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
@@ -542,7 +543,8 @@ class DyToPEnv(object):
         # self.edge_index, self.edge_index_values, self.p2e = \
         #         self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
         
-        self.paths = data['path']
+        paths = data['path']
+        self.paths = paths
 
         # edge nodes' degree, index lookup
         edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
@@ -555,14 +557,14 @@ class DyToPEnv(object):
 
         path_values = [0] * self.num_path_node
         for (src, dst) in zip(src, dst):
-            flow_use_path[0] += [flow_count] * len(self.paths.get((src, dst), []))
+            flow_use_path[0] += [flow_count] * len(paths.get(f'{src}, {dst}', []))
             # index = self.num_path * ((self.G.number_of_nodes() - 1) * src + dst) if src > dst \
             #     else self.num_path * ((self.G.number_of_nodes() - 1) * src + dst - 1)
             index = flow_count * self.num_path
             flow_use_path[1] += list(range(index, index + self.num_path))
             flow_count += 1
 
-            for i, path in enumerate(self.paths.get((src, dst), [])):
+            for i, path in enumerate(self.paths.get(f'{src}, {dst}', [])):
                 path_values[index+i] = len(path)
                 path_i = index + i
 
@@ -622,9 +624,12 @@ class DyToPEnv(object):
         G.add_nodes_from(range(params.graph_node_num))
         ## 1. Inter-satellite links
         for e in edge_list:
+            if (e[0] == e[1]) :
+                continue
             G.add_edge(e[0], e[1], capacity=params.isl_cap)
+            # G.add_edge(e[1], e[0], capacity=params.isl_cap)
         ## 2. User-satellite links
-        for i in range(params.satellite_num):
+        for i in range(params.Offset5):
             # Uplink
             G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
             # Downlink
@@ -636,6 +641,8 @@ class DyToPEnv(object):
                     continue
                 G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
                 G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+        
+        return G
 
 
     def extract_sol_mat(self, action):

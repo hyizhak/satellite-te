@@ -15,6 +15,8 @@ from datasets import Dataset
 
 from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
 from lib.data.starlink.orbit_params import OrbitParams
+from lib.data.starlink.ism import InterShellMode as ISM
+
 
 
 # ========== Benchmarking arguments
@@ -96,7 +98,7 @@ def benchmark(args):
             isl_cap=50,
             uplink_cap=200,
             downlink_cap=200,
-            ism='GrdStation'
+            ism=ISM.GRD_STATION
         )
 
         match = re.search(r'\d+', path.parts[-1])
@@ -110,10 +112,7 @@ def benchmark(args):
         with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_B.pkl'), 'rb') as file:
             data_part2 = pickle.load(file)
 
-        data = data_part1 + data_part2
-
-        dataset = Dataset.from_list(data)
-
+        dataset = data_part1 + data_part2
 
 
     dytop_env = DyToPEnv(

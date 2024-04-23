@@ -20,8 +20,9 @@ class TopoGNN(nn.Module):
         self.edge_gat_2 = dglnn.EdgeGATConv(
             in_feats=16,
             edge_feats=1,
-            out_feats=1,
+            out_feats=8,
             num_heads=2,)
+        self.edge_feature = nn.Linear(16, 1)
 
     def forward(self, G, efeatures):
 
@@ -62,7 +63,10 @@ class TopoGNN(nn.Module):
         # Define a function to concatenate the features of source and destination nodes
         def generate_edge_features(edges):
             # edges.src['feat'] and edges.dst['feat'] are the features of source and destination nodes
-            return {'edge_feat': (edges.src['feat'] * edges.dst['feat']) ** 0.5}
+            # return {'edge_feat': (edges.src['feat'] * edges.dst['feat']) ** 0.5}
+            concatenated_features = torch.cat([edges.src['feat'], edges.dst['feat']], dim=1) 
+            edge_features = self.edge_feature(concatenated_features)
+            return {'edge_feat': edge_features}
 
         # Apply the function to all edges in the graph
         G.apply_edges(generate_edge_features)

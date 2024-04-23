@@ -102,7 +102,7 @@ def SPOnGrid(src, des, G_interShell, ISL_interShell, mode, pathN):
         
     
     else:
-        if mode == 'GrdStation':
+        if mode == ISM.GRD_STATION:
             LL = max(Lsrc,Ldes)
             MM = min(Lsrc,Ldes)
             # Find the node in LL that connects to a node in MM

@@ -51,7 +51,7 @@ class DyToP():
 
             self.env.reset('train')
 
-            ids = range(self.env.idx_start, self.env.idx_stop)
+            ids = range(0, self.env.idx_stop)
             loop_obj = tqdm(
                 [ids[i:i+batch_size] for i in range(0, len(ids), batch_size)],
                 desc=f"Training epoch {epoch+1}/{num_epoch}: ", position=0)
@@ -124,7 +124,7 @@ class DyToP():
 
             runtime_list, obj_list = [], []
             loop_obj = tqdm(
-                range(self.env.idx_start, self.env.idx_stop),
+                range(0, self.env.idx_stop),
                 desc="Testing: ")
 
             for idx in loop_obj:

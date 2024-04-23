@@ -111,31 +111,35 @@ class StarlinkAdapter():
                 case ISM.GRD_STATION:
                     E_inter = []
                     for SatIndex in range(len(G_interShell)):
-                        E_inter.append([SatIndex, int(G_interShell[SatIndex] + Offset5)])
-                        E_inter.append([int(G_interShell[SatIndex] + Offset5), SatIndex])
+                        if int(G_interShell[SatIndex]) >= 0:
+                            E_inter.append([SatIndex, int(G_interShell[SatIndex] + Offset5)])
+                            E_inter.append([int(G_interShell[SatIndex] + Offset5), SatIndex])  
                     graph_node_num = Offset5 * 2 + GrdStationNum
 
                     
 
-                case _:
+                case ISM.ISL:
                     E_inter = []
                     for SatIndex in range(len(ISL_interShell[0])): # 2 to 1
-                        S2 = SatIndex + Offset2 
-                        S1 = int(ISL_interShell[0][SatIndex])
-                        E_inter.append([S2, S1])
-                        E_inter.append([S1, S2])
+                        if ISL_interShell[0][SatIndex] >= 0:
+                            S2 = SatIndex + Offset2 
+                            S1 = int(ISL_interShell[0][SatIndex])
+                            E_inter.append([S2, S1])
+                            E_inter.append([S1, S2])
                     
                     for SatIndex in range(len(ISL_interShell[1])): # 3 to 2
-                        S3 = int(SatIndex + Offset3)
-                        S2 = int(ISL_interShell[1][SatIndex] + Offset2)
-                        E_inter.append([S3, S2])
-                        E_inter.append([S2, S3])
+                        if ISL_interShell[1][SatIndex] >= 0:
+                            S3 = int(SatIndex + Offset3)
+                            S2 = int(ISL_interShell[1][SatIndex] + Offset2)
+                            E_inter.append([S3, S2])
+                            E_inter.append([S2, S3])
                     
                     for SatIndex in range(len(ISL_interShell[2])): # 4 to 3
-                        S4 = int(SatIndex + Offset4)
-                        S3 = int(ISL_interShell[2][SatIndex] + Offset3)
-                        E_inter.append([S4, S3])
-                        E_inter.append([S3, S4])
+                        if ISL_interShell[2][SatIndex] >= 0:
+                            S4 = int(SatIndex + Offset4)
+                            S3 = int(ISL_interShell[2][SatIndex] + Offset3)
+                            E_inter.append([S4, S3])
+                            E_inter.append([S3, S4])
                     graph_node_num = Offset5 * 2
                     
             sat2user = generate_sat2user(satellite_num, GrdStationNum, ism)
@@ -178,10 +182,13 @@ class StarlinkAdapter():
                         G_interShell, 
                         ISL_interShell, 
                         ism, 
-                        5)  
+                        5)
+
+                while len(paths) < 5:
+                    paths.append(paths[0])  
                 
-                path_dict[(src, dst)] = [[src] + path + [dst] for path in paths]
-                tm_dict[(src, dst)] = d
+                path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in paths]
+                tm_dict[f'{src}, {dst}'] = d
 
             data_idx = k if file_idx == "A" else 5000 + k
                             
@@ -200,11 +207,6 @@ class StarlinkAdapter():
 
         AssetManager.save_starlink_dataset_(output_path, os.path.basename(file_path), starlink_dataset)
 
-            
-        
-        
-    
-    
     @staticmethod
     def matrix_from_tm_file(file_path)->np.ndarray:
         with open(file_path, 'rb') as f:

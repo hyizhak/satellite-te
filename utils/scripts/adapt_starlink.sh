@@ -10,6 +10,6 @@ TEST_RATIO=0.2
 for intensity in 25 50 75 100; do
     python ${STARLINK_ADAPTER_SCRIPT} \
         --input-path ${INPUT_DIR}/DataSetForSaTE${intensity} \
-        --output-path ${OUTPUT_DIR} \
+        --output-path ${OUTPUT_DIR}/test \
         --intensity ${intensity}
 done

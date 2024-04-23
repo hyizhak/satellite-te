@@ -29,6 +29,7 @@ for problem in $PROBLEM_LIST; do
         --output-dir ${OUTPUT_DIR} \
         --topo-num ${RUN_TOPO_NUM} \
         --train --test
+    break
 done
 
 # Copy the output directory to the specified location
