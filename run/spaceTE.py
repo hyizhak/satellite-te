@@ -13,7 +13,7 @@ from _common import *
 from pathlib import Path
 from datasets import Dataset
 
-from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
+from lib.spaceTE import DyToPEnv, DyToPEnvIridium, DyToPActor, DyToP
 from lib.data.starlink.orbit_params import OrbitParams
 from lib.data.starlink.ism import InterShellMode as ISM
 
@@ -89,19 +89,25 @@ def benchmark(args):
 
     path = Path(problem_path)
 
-    if len(path.parts) > 1 and path.parts[-2] == 'starlink':
+    if len(path.parts) > 1 and path.parts[-3] == 'starlink':
+
         print('Starlink!')
+
         params = OrbitParams(
-            GrdStationNum=222,
+            # GrdStationNum=222,
+            GrdStationNum=0,
             Offset5=4236,
-            graph_node_num=8694,
-            isl_cap=50,
-            uplink_cap=200,
-            downlink_cap=200,
-            ism=ISM.GRD_STATION
+            # graph_node_num=8694,
+            graph_node_num=8472,
+            isl_cap=200,
+            uplink_cap=800,
+            downlink_cap=800,
+            ism=ISM.ISL
         )
 
-        match = re.search(r'\d+', path.parts[-1])
+        print(params)
+
+        match = re.search(r'\d+', path.parts[-2])
         intensity = int(match.group())
 
         print(f'Loading Starlink data for intensity {intensity}')
@@ -115,28 +121,61 @@ def benchmark(args):
         dataset = data_part1 + data_part2
 
 
-    dytop_env = DyToPEnv(
-        obj=obj,
-        problem_path=problem_path,
-        num_path=path_num,
-        edge_disjoint=edge_disjoint,
-        dist_metric=dist_metric,
-        rho=rho,
-        work_dir=work_dir,
-        dataset=dataset,
-        num_failure=num_failure,
-        orbit_params=params,
-        device=device)
-    dytop_actor = DyToPActor(
-        dytop_env=dytop_env,
-        topo_gnn=topo_gnn,
-        train_id=train_id,
-        device=device)
-    dytop = DyToP(
-        dytop_env=dytop_env,
-        dytop_actor=dytop_actor,
-        lr=lr,
-        early_stop=early_stop)
+        dytop_env = DyToPEnv(
+            obj=obj,
+            problem_path=problem_path,
+            num_path=path_num,
+            edge_disjoint=edge_disjoint,
+            dist_metric=dist_metric,
+            rho=rho,
+            work_dir=work_dir,
+            dataset=dataset,
+            num_failure=num_failure,
+            orbit_params=params,
+            device=device)
+        dytop_actor = DyToPActor(
+            dytop_env=dytop_env,
+            topo_gnn=topo_gnn,
+            train_id=train_id,
+            device=device)
+        dytop = DyToP(
+            dytop_env=dytop_env,
+            dytop_actor=dytop_actor,
+            lr=lr,
+            early_stop=early_stop)
+        
+    else:
+
+        print('Iridium...')
+
+        dytop_env = DyToPEnvIridium(
+            obj=obj,
+            # topo=topo,
+            problem_path=problem_path,
+            num_topo=topo_num,
+            num_path=path_num,
+            edge_disjoint=edge_disjoint,
+            dist_metric=dist_metric,
+            rho=rho,
+            train_all=train_all, 
+            val_ratio=val_ratio,
+            train_size=train_size_per_topo, val_size=val_size_per_topo,
+            test_all=test_all,
+            test_size=test_size_per_topo,
+            work_dir=work_dir,
+            num_failure=num_failure,
+            device=device)
+        dytop_actor = DyToPActor(
+            dytop_env=dytop_env,
+            topo_gnn=topo_gnn,
+            train_id=train_id,
+            device=device)
+        dytop = DyToP(
+            dytop_env=dytop_env,
+            dytop_actor=dytop_actor,
+            lr=lr,
+            early_stop=early_stop)
+
         
     
 

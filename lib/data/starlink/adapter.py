@@ -21,18 +21,13 @@ from . import SPOnGrid as SPG
 
 class StarlinkAdapter():
     
-    def __init__(self, input_path, topo_file_template, file_volume, data_per_topo, ism:ISM, isl_cap, uplink_cap, downlink_cap, test_ratio, parallel=None):
+    def __init__(self, input_path, topo_file_template, file_volume, data_per_topo, ism:ISM, parallel=None):
         self.input_path = input_path
         self.input_topo_file_template = topo_file_template
         
         self.file_volume = file_volume
         self.data_per_topo = data_per_topo
         self.ism = ism
-        self.isl_cap = isl_cap
-        self.uplink_cap = uplink_cap
-        self.downlink_cap = downlink_cap
-        
-        self.test_ratio = test_ratio
         
         self.parallel = parallel
         
@@ -45,14 +40,14 @@ class StarlinkAdapter():
         args = []
         for i in self.file_volume:
             file_path = os.path.join(self.input_path, self.input_topo_file_template.format(i))
-            args.append((file_path, self.data_per_topo, i, self.ism, self.uplink_cap, self.downlink_cap, self.isl_cap, self.test_ratio, output_path))
+            args.append((file_path, self.data_per_topo, i, self.ism, output_path))
         
         with mp.Pool(self.parallel) as pool:
             pool.starmap(StarlinkAdapter._adapt_topo_file, args)
         
         
     @staticmethod
-    def _adapt_topo_file(file_path, data_num, file_idx, ism, uplink_cap, downlink_cap, isl_cap, test_ratio, output_path):
+    def _adapt_topo_file(file_path, data_num, file_idx, ism, output_path):
         # ========= Orbit Shell Parameters =========
         OrbitNum1 = 72
         SatNum1   = 22
@@ -89,8 +84,6 @@ class StarlinkAdapter():
         G4, EMap4, E4 = MSG.Inter_Shell_Graph(OrbitNum4, SatNum4, LatMat4, Offset4, LatLimit)
 
         file = open(file_path, 'rb')
-
-        train_num = int(data_num * (1 - test_ratio))
 
         starlink_dataset = []
 

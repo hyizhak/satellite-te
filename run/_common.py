@@ -48,5 +48,7 @@ SCALE_FACTORS = [1.0]
 
 def update_output_path(args, model):
     if args.output_prefix is None:
-        args.output_prefix = os.path.basename(args.problem_path) + f'_{model}'
+        parent_basename = os.path.basename(os.path.dirname(args.problem_path))
+        problem_basename = os.path.basename(args.problem_path)
+        args.output_prefix = f'{parent_basename}_{problem_basename}_{model}'
     args.work_dir = os.path.join(args.output_dir, args.output_prefix)

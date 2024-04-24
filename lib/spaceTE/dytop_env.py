@@ -606,7 +606,7 @@ class DyToPEnv(object):
                       'path': self.num_path_node,
                       'link': self.num_edge_node}
         
-        print(num_nodes_dict)
+        # print(num_nodes_dict)
 
         G = dgl.heterograph(data_dict=graph_data, num_nodes_dict=num_nodes_dict)
 

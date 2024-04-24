@@ -4,6 +4,8 @@ def generate_sat2user(satellite_num, grdstation_num, mode:ISM):
     match mode:
         case ISM.GRD_STATION:
             return lambda sat: sat + satellite_num + grdstation_num
+        case ISM.ISL:
+            return lambda sat: sat + satellite_num
         case _:
             raise NotImplementedError()
 

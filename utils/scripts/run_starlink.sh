@@ -24,12 +24,16 @@ for problem in $PROBLEM_LIST; do
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM}
     # Run SpaceTE (10 mins per topology/epoch)
-    python ${SPACETE_SCRIPT} \
-        --problem-path ${INPUT_DIR}/starlink/${problem} \
+    nohup python ${SPACETE_SCRIPT} \
+        --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
         --output-dir ${OUTPUT_DIR} \
         --topo-num ${RUN_TOPO_NUM} \
         --train --test
-    break
+    nohup python ${SPACETE_SCRIPT} \
+        --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
+        --output-dir ${OUTPUT_DIR} \
+        --topo-num ${RUN_TOPO_NUM} \
+        --train --test
 done
 
 # Copy the output directory to the specified location
