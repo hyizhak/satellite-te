@@ -174,7 +174,7 @@ run/teal-logs
 
 output*
 
-utils/scripts/nohup.out
+utils/scripts/*.out
 
 
 

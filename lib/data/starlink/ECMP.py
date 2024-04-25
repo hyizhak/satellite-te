@@ -4,7 +4,7 @@ Created on Wed Apr 24 14:27:49 2024
 
 @author: admin
 """
-import SPOnGrid as SPG
+from . import SPOnGrid as SPG
 def ECMP(E,FlowSet,G_interShell,ISL_interShell,InterConnectedMode,ISLCap,UpLinkCap,DownLinkCap):
     Load_E = [0 for x in range(len(E))]
     Load_Up = [0 for x in range(4236)]
