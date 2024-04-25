@@ -23,12 +23,12 @@ for problem in $PROBLEM_LIST; do
     #     --problem-path ${OUTPUT_DIR}/${problem} \
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM}
-    # Run SpaceTE (10 mins per topology/epoch)
-    nohup python ${SPACETE_SCRIPT} \
-        --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
-        --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM} \
-        --train --test
+    # Run SpaceTE (need to change the params in spaceTE.py)
+    # nohup python ${SPACETE_SCRIPT} \
+    #     --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
+    #     --output-dir ${OUTPUT_DIR} \
+    #     --topo-num ${RUN_TOPO_NUM} \
+    #     --train --test
     nohup python ${SPACETE_SCRIPT} \
         --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
         --output-dir ${OUTPUT_DIR} \

@@ -159,7 +159,7 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# path folders
+# data folders
 topologies/paths
 input
 raw_data
@@ -173,6 +173,8 @@ topologies
 run/teal-logs
 
 output*
+
+utils/scripts/nohup.out
 
 
 

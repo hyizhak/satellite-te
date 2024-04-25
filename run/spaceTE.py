@@ -13,7 +13,7 @@ from _common import *
 from pathlib import Path
 from datasets import Dataset
 
-from lib.spaceTE import DyToPEnv, DyToPEnvIridium, DyToPActor, DyToP
+from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
 from lib.data.starlink.orbit_params import OrbitParams
 from lib.data.starlink.ism import InterShellMode as ISM
 
@@ -94,15 +94,16 @@ def benchmark(args):
         print('Starlink!')
 
         params = OrbitParams(
-            # GrdStationNum=222,
-            GrdStationNum=0,
+            GrdStationNum=222,
+            # GrdStationNum=0,
             Offset5=4236,
-            # graph_node_num=8694,
-            graph_node_num=8472,
+            graph_node_num=8694,
+            # graph_node_num=8472,
             isl_cap=200,
             uplink_cap=800,
             downlink_cap=800,
-            ism=ISM.ISL
+            ism=ISM.GRD_STATION,
+            # ism=ISM.ISL
         )
 
         print(params)
@@ -148,7 +149,7 @@ def benchmark(args):
 
         print('Iridium...')
 
-        dytop_env = DyToPEnvIridium(
+        dytop_env = DyToPEnv(
             obj=obj,
             # topo=topo,
             problem_path=problem_path,
