@@ -164,15 +164,7 @@ topologies/paths
 input
 raw_data
 
-Iridium/IridiumDataSet14day20sec
-
-traffic-matrices/toy
-
-topologies
-
-run/teal-logs
-
-output*
+output
 
 utils/scripts/*.out
 
