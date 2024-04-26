@@ -5,17 +5,20 @@ Created on Wed Apr 24 14:27:49 2024
 @author: admin
 """
 from . import SPOnGrid as SPG
+from .ism import InterShellMode as ISM
+
 def ECMP(E,FlowSet,G_interShell,ISL_interShell,InterConnectedMode,ISLCap,UpLinkCap,DownLinkCap):
     Load_E = [0 for x in range(len(E))]
     Load_Up = [0 for x in range(4236)]
     Load_Down = [0 for x in range(4236)]
     Throughput = 0
     Demand = 0
+    ism = ISM.ISL if InterConnectedMode == 'ISL' else ISM.GRD_STATION
     for flow in FlowSet:
         Path = SPG.SPOnGrid(flow[0],flow[1],
                         G_interShell, 
                         ISL_interShell, 
-                        InterConnectedMode, 
+                        ism, 
                         5) 
         Demand += flow[2]
         b_Flow = min(UpLinkCap - Load_Up[flow[0]], DownLinkCap - Load_Down[flow[1]])
