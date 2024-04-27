@@ -163,9 +163,6 @@ cython_debug/
 topologies/paths
 input
 raw_data
-
-output
-
 utils/scripts/*.out
 
 
