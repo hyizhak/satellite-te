@@ -12,4 +12,5 @@ SPACETE_SCRIPT=${PROJECT_ROOT}/run/spaceTE.py
 ECMP_SCRIPT=${PROJECT_ROOT}/run/ECMP.py
 
 IRIDIUM_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/iridium/adapter.py
+IRIDIUM_NEW_FORM_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/iridium/adapt_iridium.py
 STARLINK_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/starlink/adapt_starlink.py

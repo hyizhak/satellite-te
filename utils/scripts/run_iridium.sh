@@ -3,15 +3,15 @@ source $(dirname $(readlink -f $0))/env
 
 mkdir -p $OUTPUT_DIR
 
-RUN_TOPO_NUM=300
+RUN_TOPO_NUM=10
 
-# PROBLEM_LIST=$(cd $INPUT_DIR/Iridium; ls)
+PROBLEM_LIST=$(cd $INPUT_DIR/iridium_new_form; ls)
 
-PROBLEM_LIST=("IridiumDataSet14day20sec_Int5" "IridiumDataSet14day20sec_Int7p5")
+# PROBLEM_LIST=("IridiumDataSet14day20sec_Int5" "IridiumDataSet14day20sec_Int7p5")
 
-echo "Problem list: ${PROBLEM_LIST[@]}"
+echo "Problem list: $PROBLEM_LIST"
 
-for problem in "${PROBLEM_LIST[@]}"; do
+for problem in Intensity_12p5; do
     echo "Processing problem: $problem"
     # Run Teal
     # python ${TEAL_SCRIPT} \
@@ -25,7 +25,7 @@ for problem in "${PROBLEM_LIST[@]}"; do
     #     --topo-num ${RUN_TOPO_NUM}
     # Run SpaceTE (10 mins per topology/epoch)
     nohup python ${SPACETE_SCRIPT} \
-        --problem-path ${INPUT_DIR}/Iridium/${problem} \
+        --problem-path ${INPUT_DIR}/iridium_new_form/${problem} \
         --output-dir ${OUTPUT_DIR} \
         --topo-num ${RUN_TOPO_NUM} \
         --train --test

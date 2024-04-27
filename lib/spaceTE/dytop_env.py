@@ -10,6 +10,7 @@ from itertools import product
 
 from networkx.readwrite import json_graph
 from sklearn.model_selection import train_test_split
+from pathlib import Path
 import dgl
 
 import torch
@@ -618,31 +619,46 @@ class DyToPEnv(object):
 
     def construct_from_edge(self, edge_list):
         params = self.orbit_params
+
         """Construct a networkx graph from a list of edges."""
-        sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
-        G = nx.DiGraph()
-        G.add_nodes_from(range(params.graph_node_num))
-        ## 1. Inter-satellite links
-        for e in edge_list:
-            if (e[0] == e[1]) :
-                continue
-            G.add_edge(e[0], e[1], capacity=params.isl_cap)
-            # G.add_edge(e[1], e[0], capacity=params.isl_cap)
-        ## 2. User-satellite links
-        for i in range(params.Offset5):
-            # Uplink
-            G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
-            # Downlink
-            G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
-        ## 3. Inter ground station links
-        for i in range(params.GrdStationNum):
-            for j in range(params.GrdStationNum):
-                if i == j:
+
+        path = Path(self.problem_path)
+
+        if len(path.parts) > 1 and path.parts[-3] == 'starlink':
+            sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
+            G = nx.DiGraph()
+            G.add_nodes_from(range(params.graph_node_num))
+            ## 1. Inter-satellite links
+            for e in edge_list:
+                if (e[0] == e[1]) :
                     continue
-                G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
-                G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+                G.add_edge(e[0], e[1], capacity=params.isl_cap)
+                # G.add_edge(e[1], e[0], capacity=params.isl_cap)
+            ## 2. User-satellite links
+            for i in range(params.Offset5):
+                # Uplink
+                G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
+                # Downlink
+                G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
+            ## 3. Inter ground station links
+            for i in range(params.GrdStationNum):
+                for j in range(params.GrdStationNum):
+                    if i == j:
+                        continue
+                    G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
+                    G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+            
+            return G
         
-        return G
+        else:
+            G = nx.DiGraph()
+            G.add_nodes_from(range(66*2))
+            for e in edge_list:
+                G.add_edge(e[0], e[1], capacity=25)
+            for i in range(66):
+                G.add_edge(i, i+66, capacity=100)
+                G.add_edge(i+66, i, capacity=100)
+            return G
 
 
     def extract_sol_mat(self, action):

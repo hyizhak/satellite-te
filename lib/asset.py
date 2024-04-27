@@ -129,9 +129,9 @@ class AssetManager():
             return pickle.load(f)
         
     @classmethod
-    def save_starlink_dataset_(cls, output_path, file_path, starlink_dataset):
+    def save_dataset_(cls, output_path, file_path, dataset):
         with open(os.path.join(output_path, file_path), 'wb') as f:
-            pickle.dump(starlink_dataset, f)
+            pickle.dump(dataset, f)
         
     @classmethod
     def model_dir(cls, work_dir, topo_idx=None, create_dir=False):

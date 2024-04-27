@@ -147,22 +147,23 @@ def benchmark(args):
     else:
 
         print('Iridium...')
+        
+        intensity = number = path.parts[-1].split("_")[1]
+
+        print(f'Loading Iridium data for intensity {intensity}')
+
+        with open(os.path.join(problem_path, f'Iridium_DataSetForAgent_{intensity}_60480.pkl'), 'rb') as file:
+            dataset = pickle.load(file)
 
         dytop_env = DyToPEnv(
             obj=obj,
-            # topo=topo,
             problem_path=problem_path,
-            num_topo=topo_num,
             num_path=path_num,
             edge_disjoint=edge_disjoint,
             dist_metric=dist_metric,
             rho=rho,
-            train_all=train_all, 
-            val_ratio=val_ratio,
-            train_size=train_size_per_topo, val_size=val_size_per_topo,
-            test_all=test_all,
-            test_size=test_size_per_topo,
             work_dir=work_dir,
+            dataset=dataset,
             num_failure=num_failure,
             device=device)
         dytop_actor = DyToPActor(
