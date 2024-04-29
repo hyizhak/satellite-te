@@ -183,7 +183,7 @@ class StarlinkAdapter():
                     paths.append(paths[0])  
                 
                 path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in paths]
-                tm_dict[f'{src}, {dst}'] = d
+                tm_dict[f'{src}, {dst}'] = tm_dict.get(f'{src}, {dst}', 0) + d
 
             data_idx = k if file_idx == "A" else 5000 + k
                             
@@ -367,7 +367,8 @@ class StarlinkMixAdapter():
                         paths.append(paths[0])  
                     
                     path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in paths]
-                    tm_dict[f'{src}, {dst}'] = d
+                    tm_dict[f'{src}, {dst}'] = tm_dict.get(f'{src}, {dst}', 0) + d
+
 
                 data_idx += 1
                                 
@@ -447,7 +448,7 @@ class IridiumAdapter():
                 while len(Path) < 5:
                     Path.append(Path[0])
 
-                tm_dict[f'{flow[0]}, {flow[1]}'] = flow[2]
+                tm_dict[f'{flow[0]}, {flow[1]}'] = tm_dict.get(f'{flow[0]}, {flow[1]}', 0) + flow[2]
                 path_dict[f'{flow[0]}, {flow[1]}'] = Path
 
 
