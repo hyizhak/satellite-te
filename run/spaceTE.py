@@ -92,18 +92,29 @@ def benchmark(args):
 
         print('Starlink!')
 
-        params = OrbitParams(
-            GrdStationNum=222,
-            # GrdStationNum=0,
-            Offset5=4236,
-            graph_node_num=8694,
-            # graph_node_num=8472,
-            isl_cap=200,
-            uplink_cap=800,
-            downlink_cap=800,
-            ism=ISM.GRD_STATION,
-            # ism=ISM.ISL
-        )
+        if path.parts[-1] == 'GrdStation':
+
+            params = OrbitParams(
+                GrdStationNum=222,
+                Offset5=4236,
+                graph_node_num=8694,
+                isl_cap=200,
+                uplink_cap=800,
+                downlink_cap=800,
+                ism=ISM.GRD_STATION,
+            )
+
+        else:
+
+            params = OrbitParams(
+                GrdStationNum=0,
+                Offset5=4236,
+                graph_node_num=8472,
+                isl_cap=200,
+                uplink_cap=800,
+                downlink_cap=800,
+                ism=ISM.ISL,
+            )
 
         print(params)
 

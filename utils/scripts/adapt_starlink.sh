@@ -10,10 +10,16 @@ for intensity in 25 50 75 100; do
         --output-path ${OUTPUT_DIR} \
         --intensity ${intensity} \
         --inter-shell-mode "GrdStation"
+    
+    nohup python ${STARLINK_ADAPTER_SCRIPT} \
+        --input-path ${INPUT_DIR}/DataSetForSaTE${intensity} \
+        --output-path ${OUTPUT_DIR} \
+        --intensity ${intensity} \
+        --inter-shell-mode "ISL"
 done
 
-nohup python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${INPUT_DIR} \
-        --output-path ${OUTPUT_DIR} \
-        --inter-shell-mode "GrdStation" \
-        --mixed
+# nohup python ${STARLINK_ADAPTER_SCRIPT} \
+#         --input-path ${INPUT_DIR} \
+#         --output-path ${OUTPUT_DIR} \
+#         --inter-shell-mode "GrdStation" \
+#         --mixed

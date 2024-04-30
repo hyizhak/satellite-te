@@ -11,7 +11,7 @@ PROBLEM_LIST=$(cd $INPUT_DIR/starlink; ls)
 
 echo "Problem list: $PROBLEM_LIST"
 
-for problem in DataSetForSaTE25; do
+for problem in $PROBLEM_LIST; do
     echo "Processing problem: $problem"
     # Run Teal
     # python ${TEAL_SCRIPT} \
