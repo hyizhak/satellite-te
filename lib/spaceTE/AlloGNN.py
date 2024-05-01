@@ -121,7 +121,7 @@ class AlloGNN(nn.Module):
 
         # Node embedding update
         for ntype in graph.ntypes:
-            graph.nodes[ntype].data["x"] = F.relu(self.projector[ntype](graph.nodes[ntype].data["x"].reshape(-1, 1)))
+            graph.nodes[ntype].data["x"] = F.relu(self.projector[ntype](graph.nodes[ntype].data["x"].reshape(-1, self.in_sizes[ntype])))
 
         # Iterate over the cascaded layers
         for conv_key, conv_dict in self.full_graph_conv.items():
