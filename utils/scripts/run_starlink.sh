@@ -24,16 +24,16 @@ for problem in DataSetForSaTE25; do
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM}
     # Run SpaceTE (need to change the params in spaceTE.py)
+    nohup python ${SPACETE_SCRIPT} \
+        --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
+        --output-dir ${OUTPUT_DIR}/model_test \
+        --topo-num ${RUN_TOPO_NUM} \
+        --train --test
     # nohup python ${SPACETE_SCRIPT} \
-    #     --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
+    #     --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
     #     --output-dir ${OUTPUT_DIR} \
     #     --topo-num ${RUN_TOPO_NUM} \
     #     --train --test
-    nohup python ${SPACETE_SCRIPT} \
-        --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
-        --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM} \
-        --train --test
 done
 
 # Copy the output directory to the specified location

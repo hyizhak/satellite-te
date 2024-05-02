@@ -154,7 +154,7 @@ class AlloGNN(nn.Module):
 
             # Update each node simultaneously
             for node_key, embedding in embeddings.items():
-                # normalized_embedding = nn.LayerNorm(embedding.size()).to(embedding.device)(embedding)
+                # embedding = nn.LayerNorm(embedding.size()).to(embedding.device)(embedding)
                 graph.nodes[node_key].data["x"] = F.relu(embedding)
 
             # Residual values

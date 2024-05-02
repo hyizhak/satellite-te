@@ -65,7 +65,7 @@ class TopoGNN(nn.Module):
             # edges.src['feat'] and edges.dst['feat'] are the features of source and destination nodes
             # return {'edge_feat': (edges.src['feat'] * edges.dst['feat']) ** 0.5}
             concatenated_features = torch.cat([edges.src['feat'], edges.dst['feat']], dim=1) 
-            edge_features = self.edge_feature(concatenated_features)
+            edge_features = F.relu(self.edge_feature(concatenated_features))
             return {'edge_feat': edge_features}
 
         # Apply the function to all edges in the graph
