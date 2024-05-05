@@ -6,7 +6,7 @@ import argparse
 ROOT = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(ROOT)
 
-from lib.data.starlink import StarlinkAdapter, StarlinkMixAdapter, InterShellMode as ISM
+from lib.data.starlink import StarlinkAdapter, StarlinkMixAdapter, StarlinkReducedAdapter, InterShellMode as ISM
 
 # ========== Configurations ==========
 ARG_TOPO_FILE_TEMPLATE = 'StarLink_DataSetForAgent{}_5000_{}.pkl'
@@ -20,7 +20,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--input-path', type=str, required=True)
 parser.add_argument('--mixed', action="store_true")
 parser.add_argument('--input-topo-file-template', type=str, default=ARG_TOPO_FILE_TEMPLATE)
-parser.add_argument('--intensity', type=int, required=True)
+parser.add_argument('--intensity', type=str)
+parser.add_argument('--reduced', type=int)
+parser.add_argument('--teal_form', action="store_true")
 parser.add_argument('--data-per-topo', type=int, default=ARG_DATA_PER_TOPO)
 
 parser.add_argument('--inter-shell-mode', type=str, required=True)
@@ -30,6 +32,9 @@ parser.add_argument('--prefix', type=str, default=None)
 parser.add_argument('--output-path', type=str, required=True)
 
 args = parser.parse_args()
+
+if not args.mixed and args.intensity is None:
+    parser.error("The --intensity argument is required.")
 
 if args.input_path[-1] == '/':
     args.input_path = args.input_path[:-1]
@@ -49,8 +54,27 @@ if args.mixed:
     StarlinkMixAdapter(
         input_path=args.input_path,
         topo_file_template=args.input_topo_file_template.format('{}', 'A'),
-        data_per_topo=args.data_per_topo / 4,
+        data_per_topo=int(args.data_per_topo / 2),
         ism=args.ism,
+        parallel=args.parallel
+    ).adapt(output_path)
+
+elif args.reduced is not None:
+
+    if args.teal_form:
+        output_path = os.path.join(args.output_path, args.prefix, args.inter_shell_mode+'_teal')
+    else:
+        output_path = os.path.join(args.output_path, args.prefix, args.inter_shell_mode)
+
+    size = 500 if args.reduced == 8 else 1500
+
+    StarlinkReducedAdapter(
+        input_path=args.input_path,
+        topo_file_template=args.input_topo_file_template.format(args.intensity, f'Size{size}'),
+        data_per_topo=args.data_per_topo,
+        ism=args.ism,
+        reduced=args.reduced,
+        teal_form=args.teal_form,
         parallel=args.parallel
     ).adapt(output_path)
 

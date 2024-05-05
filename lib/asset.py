@@ -31,14 +31,28 @@ class AssetManager():
     @classmethod
     def graph_path(cls, problem_path, topo_idx, create_path=False):
         return os.path.join(cls._data_topo_dir(problem_path, topo_idx, create_path), "graph.gpickle")
+    
+    @classmethod
+    def graph_edge_path(cls, problem_path, topo_idx, create_path=False):
+        return os.path.join(cls._data_topo_dir(problem_path, topo_idx, create_path), "graph_edge.pickle")
 
     @classmethod
     def load_graph(cls, problem_path, topo_idx) -> nx.Graph:
         return nx.read_gpickle(cls.graph_path(problem_path, topo_idx))
     
     @classmethod
+    def load_graph_edge(cls, problem_path, topo_idx):
+        with open(cls.graph_edge_path(problem_path, topo_idx), 'rb') as f:
+            return pickle.load(f)
+    
+    @classmethod
     def save_graph_(cls, problem_path, topo_idx, G: nx.Graph):
         nx.write_gpickle(G, cls.graph_path(problem_path, topo_idx, True))
+
+    @classmethod
+    def save_graph_egde_(cls, problem_path, topo_idx, G):
+        with open(cls.graph_edge_path(problem_path, topo_idx, True), 'wb') as f:
+            pickle.dump(G, f)
 
     @classmethod
     def save_graph_(cls, problem_path, file_idx, tm_idx, G: nx.Graph):
@@ -101,10 +115,15 @@ class AssetManager():
             f"paths_num-{num_path}_edge-disjoint-{edge_disjoint}_dist-metric-{dist_metric}-dict.pkl"
         )
     
+    # @classmethod
+    # def pathform_path(cls, graph_path, num_path, edge_disjoint, dist_metric, create_path=False):
+    #     return os.path.join(os.path.dirname(graph_path), f"paths_num-{num_path}_edge-disjoint-{edge_disjoint}_dist-metric-{dist_metric}-dict.pkl"
+    #     )
+    
     @classmethod
-    def pathform_path(cls, graph_path, num_path, edge_disjoint, dist_metric, create_path=False):
-        return os.path.join(os.path.dirname(graph_path), f"paths_num-{num_path}_edge-disjoint-{edge_disjoint}_dist-metric-{dist_metric}-dict.pkl"
-        )
+    def save_pathform_(cls, problem_path, topo_idx, num_path, edge_disjoint, dist_metric, paths):
+        with open(cls.pathform_path(problem_path, topo_idx, num_path, edge_disjoint, dist_metric, True), 'wb') as f:
+            pickle.dump(paths, f)
     
     @classmethod
     def _pathform_metadata_path(cls, problem_path, topo_idx, create_path=True):

@@ -3,13 +3,13 @@ source $(dirname $(readlink -f $0))/env
 
 mkdir -p $OUTPUT_DIR
 
-RUN_TOPO_NUM=10
+RUN_TOPO_NUM=1
 
 PROBLEM_LIST=$(cd $INPUT_DIR/iridium_new_form; ls)
 
 # PROBLEM_LIST=("IridiumDataSet14day20sec_Int5" "IridiumDataSet14day20sec_Int7p5")
 
-echo "Problem list: $PROBLEM_LIST"
+# echo "Problem list: $PROBLEM_LIST"
 
 for problem in Intensity_12p5; do
     echo "Processing problem: $problem"

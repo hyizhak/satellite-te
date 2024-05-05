@@ -4,7 +4,10 @@ import os
 import math
 import time
 import random
+import numpy as np
 from itertools import product
+import networkx as nx
+from tqdm import tqdm
 
 import networkx
 from networkx.readwrite import json_graph
@@ -14,6 +17,7 @@ import torch_scatter
 import torch.nn as nn
 from torch.distributions.normal import Normal
 from torch.distributions.uniform import Uniform
+from lib.data.starlink.user_node import generate_sat2user
 
 from .. import AssetManager
 from .ADMM import ADMM
@@ -27,6 +31,7 @@ class TealEnv(object):
             num_path, edge_disjoint, dist_metric, rho,
             num_failure, device,
             work_dir,
+            orbit_params=None,
             train_all=True,
             val_ratio=None,
             train_size=None, val_size=None,
@@ -57,6 +62,7 @@ class TealEnv(object):
         self.num_path = num_path
         self.edge_disjoint = edge_disjoint
         self.dist_metric = dist_metric
+        self.orbit_params = orbit_params
         
         if train_all and val_ratio is None:
             raise ValueError("val_ratio is reuqired.")
@@ -81,7 +87,7 @@ class TealEnv(object):
         # init matrices related to topology
         self.G = self.read_graph()
         self.capacity = torch.FloatTensor(
-            [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
+            [float(c_e) for u, v, c_e in self.G.edges.data('capacity') if u != v])
         self.num_edge_node = len(self.G.edges)
         self.num_path_node = self.num_path * self.G.number_of_nodes()\
             * (self.G.number_of_nodes()-1)
@@ -106,35 +112,30 @@ class TealEnv(object):
     def reset(self, mode='test'):
         """Reset the initial conditions in the beginning."""
         
-        tm_file = None
-        
         if mode == 'train' or mode == 'validate':
-            tm_file = AssetManager.tm_train_path(self.problem_path, self.topo_idx)
+            self.num_tm = AssetManager.tm_train_separate_num(self.problem_path, self.topo_idx)
         elif mode == 'test':
-            tm_file = AssetManager.tm_test_path(self.problem_path, self.topo_idx)
+            self.num_tm = AssetManager.tm_test_separate_num(self.problem_path, self.topo_idx)
         else:
             raise ValueError()
         
         self.mode = mode
-        
-        with open(tm_file, 'rb') as f:
-            self.tm = pickle.load(f)
 
         if mode == 'train':
             if self.train_all:
-                self.idx_start, self.idx_stop = 0, int(self.tm.shape[0] * (1 - self.val_ratio))
+                self.idx_start, self.idx_stop = 0, self.num_tm
             else:
                 self.idx_start, self.idx_stop = 0, self.train_size
         elif mode == 'val':
             if self.train_all:
-                self.idx_start, self.idx_stop = int(self.tm.shape[0] * (1 - self.val_ratio)), self.tm.shape[0]
+                self.idx_start, self.idx_stop = 0, self.num_tm
             else:
-                self.idx_start, self.idx_stop = self.train_size, self.train_size + self.val_size
+                self.idx_start, self.idx_stop = 0, self.val_size
         else:
             if self.test_all:
-                self.idx_start, self.idx_stop = 0, self.tm.shape[0]
+                self.idx_start, self.idx_stop = 0, self.num_tm
             else:
-                self.idx_start, self.idx_stop = 0, self.test_size
+                self.idx_start, self.idx_stop = 0, self.num_tm
             
         self.idx = self.idx_start
         self.obs = self._read_obs()
@@ -147,7 +148,7 @@ class TealEnv(object):
     def _read_obs(self):
         """Return observation (capacity + traffic matrix) from files."""
 
-        tm = self.tm[self.idx]
+        tm = self.matrix_from_tm_file(AssetManager.tm_train_separate_path(self.problem_path, self.topo_idx, self.idx))
 
         # remove demands within nodes
         tm = torch.FloatTensor(
@@ -278,7 +279,7 @@ class TealEnv(object):
             for round_iter in range(num_round_iter):
                 # flow on each edge
                 edge_flow = torch_scatter.scatter(
-                    path_flow[self.p2e[0]], self.p2e[1])
+                    path_flow[self.p2e[0]], self.p2e[1], dim_size=self.num_edge_node)
                 # util of each edge
                 util = 1 + (edge_flow/capacity-1).relu()
                 # propotionally cut path flow by max util
@@ -289,7 +290,7 @@ class TealEnv(object):
                 path_flow_allocated_total += path_flow_allocated
                 if round_iter != num_round_iter - 1:
                     capacity = (capacity - torch_scatter.scatter(
-                        path_flow_allocated[self.p2e[0]], self.p2e[1])).relu()
+                        path_flow_allocated[self.p2e[0]], self.p2e[1], dim_size=self.num_edge_node)).relu()
                     path_flow = path_flow - path_flow_allocated
             action = path_flow_allocated_total
 
@@ -317,7 +318,7 @@ class TealEnv(object):
         '''
 
         path_flow = self.transform_raw_action(raw_action)
-        edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1])
+        edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1], dim_size=self.num_edge_node)
         util = edge_flow/self.obs[:-self.num_path_node]
 
         # sample from uniform distribution [mean_min, min_max]
@@ -337,7 +338,7 @@ class TealEnv(object):
             coef = path_flow/util**2
             coef[util < 1] = 0
             coef = torch_scatter.scatter(
-                coef, path_bottleneck).reshape(-1, 1)
+                coef, path_bottleneck, dim_size=self.num_edge_node).reshape(-1, 1)
 
             # prepare path_util to bottleneck edge_util
             bottleneck_p2e = torch.sparse_coo_tensor(
@@ -396,9 +397,55 @@ class TealEnv(object):
 
     def read_graph(self) -> networkx.Graph:
         """Return network topos from json file."""
-        with open(AssetManager.graph_path(self.problem_path, self.topo_idx)) as f:
-            data = json.load(f)
-        return json_graph.node_link_graph(data)
+        E = AssetManager.load_graph_edge(self.problem_path, self.topo_idx)
+
+        params = self.orbit_params
+        sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
+        G = nx.DiGraph()
+        G.add_nodes_from(range(params.graph_node_num))
+
+        ## 1. Inter-satellite links
+        for e in E:
+            G.add_edge(e[0], e[1], capacity=params.isl_cap)
+
+        ## 2. User-satellite links
+        for i in range(params.Offset5):
+            # Uplink
+            G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
+            # Downlink
+            G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
+
+        ## 3. Inter ground station links
+        for i in range(params.GrdStationNum):
+            for j in range(params.GrdStationNum):
+                if i == j:
+                    continue
+                G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
+                G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+
+        ## 4. User-ground station links
+        for i in range(params.Offset5):
+            for j in range(params.GrdStationNum):
+                G.add_edge(sat2user(i), j + params.Offset5, capacity=0)
+                G.add_edge(j + params.Offset5, sat2user(i), capacity=0)
+
+        ## 5. Satellite-ground station links
+        for i in range(params.Offset5):
+            for j in range(params.GrdStationNum):
+                # if G.has_edge(i, j + params.Offset5):
+                #     continue
+                G.add_edge(i, j + params.Offset5, capacity=0)
+                G.add_edge(j + params.Offset5, i, capacity=0)
+
+        ## 6. Inter-user links
+        for i in range(params.Offset5):
+            for j in range(params.Offset5):
+                if i == j:
+                    continue
+                G.add_edge(sat2user(i), sat2user(j), capacity=0)
+                G.add_edge(sat2user(j), sat2user(i), capacity=0)
+
+        return G
 
 
     def get_path(self, problem_path, topo_idx, num_path, edge_disjoint, dist_metric):
@@ -473,11 +520,11 @@ class TealEnv(object):
 
         # build edge_index
         src, dst, path_i = [], [], 0
-        for s in range(len(self.G)):
+        for s in tqdm(range(len(self.G))):
             for t in range(len(self.G)):
                 if s == t:
                     continue
-                for path in path_dict[(s, t)]:
+                for path in path_dict.get((s, t), [[s, t] for _ in range(num_path)]):
                     for (u, v) in zip(path[:-1], path[1:]):
                         src.append(edge_num+path_i)
                         dst.append(edge2idx_dict[(u, v)])
@@ -499,7 +546,23 @@ class TealEnv(object):
         p2e = torch.tensor([src, dst], dtype=torch.long).to(self.device)
         p2e[0] -= len(self.G.edges)
 
+        print(len(set(p2e[1].tolist())))
+
         return edge_index, edge_index_values, p2e
+    
+    def matrix_from_tm_file(self, file_path)->np.ndarray:
+        with open(file_path, 'rb') as f:
+            data = pickle.load(f)
+        # Reconstruct the traffic matrix
+        size = data['size']
+        edge_list = data['edge_list']
+        weight_list = data['weight_list']
+        
+        tm = np.zeros((size, size))
+        for edge, weight in zip(edge_list, weight_list):
+            tm[edge[0], edge[1]] = weight
+        
+        return tm
 
     def extract_sol_mat(self, action):
         """return sparse solution matrix.

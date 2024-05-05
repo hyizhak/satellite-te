@@ -194,7 +194,6 @@ def ECMP(intensity, mode) :
 
 if __name__ == '__main__':
 
-    # accept one argument as intensity
     intensity = sys.argv[1]
     mode = sys.argv[2]
     ECMP(intensity, mode)

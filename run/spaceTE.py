@@ -92,69 +92,143 @@ def benchmark(args):
 
         print('Starlink!')
 
-        if path.parts[-1] == 'GrdStation':
+        pattern_4500 = r'^DataSetForSaTE.*'
 
-            params = OrbitParams(
-                GrdStationNum=222,
-                Offset5=4236,
-                graph_node_num=8694,
-                isl_cap=200,
-                uplink_cap=800,
-                downlink_cap=800,
-                ism=ISM.GRD_STATION,
-            )
+        if re.match(pattern_4500, path.parts[-2]) is not None or path.parts[-2] == 'mixed':
 
+            if path.parts[-1] == 'GrdStation':
+
+                params = OrbitParams(
+                    GrdStationNum=222,
+                    Offset5=4236,
+                    graph_node_num=8694,
+                    isl_cap=200,
+                    uplink_cap=800,
+                    downlink_cap=800,
+                    ism=ISM.GRD_STATION,
+                )
+
+            elif path.parts[-1] == 'ISL':
+
+                params = OrbitParams(
+                    GrdStationNum=0,
+                    Offset5=4236,
+                    graph_node_num=8472,
+                    isl_cap=200,
+                    uplink_cap=800,
+                    downlink_cap=800,
+                    ism=ISM.ISL,
+                )
+
+            print(params)
+
+            if path.parts[-2] == 'mixed':
+
+                print('Loading mixed data')
+
+                with open(os.path.join(problem_path, 'StarLink_DataSetForAgentMixed_5000_A.pkl'), 'rb') as file:
+                    dataset = pickle.load(file)
+
+            else:
+
+                match = re.search(r'\d+', path.parts[-2])
+                intensity = int(match.group())
+
+                print(f'Loading Starlink data for intensity {intensity}')
+
+                with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_A.pkl'), 'rb') as file:
+                    data_part1 = pickle.load(file)
+
+                with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_B.pkl'), 'rb') as file:
+                    data_part2 = pickle.load(file)
+
+                dataset = data_part1 + data_part2
+
+
+            dytop_env = DyToPEnv(
+                obj=obj,
+                problem_path=problem_path,
+                num_path=path_num,
+                edge_disjoint=edge_disjoint,
+                dist_metric=dist_metric,
+                rho=rho,
+                work_dir=work_dir,
+                dataset=dataset,
+                num_failure=num_failure,
+                orbit_params=params,
+                device=device)
+            dytop_actor = DyToPActor(
+                dytop_env=dytop_env,
+                topo_gnn=topo_gnn,
+                train_id=train_id,
+                device=device)
+            dytop = DyToP(
+                dytop_env=dytop_env,
+                dytop_actor=dytop_actor,
+                lr=lr,
+                early_stop=early_stop)
+            
         else:
 
-            params = OrbitParams(
-                GrdStationNum=0,
-                Offset5=4236,
-                graph_node_num=8472,
-                isl_cap=200,
-                uplink_cap=800,
-                downlink_cap=800,
-                ism=ISM.ISL,
-            )
+            match = re.search(r'\d+', path.parts[-2])
+            size = int(match.group())
 
-        print(params)
+            print(f'Loading reduced Starlink data for size {size}')
 
-        match = re.search(r'\d+', path.parts[-2])
-        intensity = int(match.group())
+            reduced = 8 if size == 500 else 2
 
-        print(f'Loading Starlink data for intensity {intensity}')
+            if path.parts[-1] == 'GrdStation':
 
-        with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_A.pkl'), 'rb') as file:
-            data_part1 = pickle.load(file)
+                params = OrbitParams(
+                    GrdStationNum=222,
+                    Offset5=round(2 * 22 * 72 / reduced),
+                    graph_node_num=round(2 * 22 * 72 / reduced) + 222,
+                    isl_cap=200,
+                    uplink_cap=800,
+                    downlink_cap=800,
+                    ism=ISM.GRD_STATION,
+                )
 
-        with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_B.pkl'), 'rb') as file:
-            data_part2 = pickle.load(file)
+            elif path.parts[-1] == 'ISL':
 
-        dataset = data_part1 + data_part2
+                params = OrbitParams(
+                    GrdStationNum=0,
+                    Offset5=round(2 * 22 * 72 / reduced),
+                    graph_node_num=round(2 * 22 * 72 / reduced) * 2,
+                    isl_cap=200,
+                    uplink_cap=800,
+                    downlink_cap=800,
+                    ism=ISM.ISL,
+                )
 
+            print(params)
 
-        dytop_env = DyToPEnv(
-            obj=obj,
-            problem_path=problem_path,
-            num_path=path_num,
-            edge_disjoint=edge_disjoint,
-            dist_metric=dist_metric,
-            rho=rho,
-            work_dir=work_dir,
-            dataset=dataset,
-            num_failure=num_failure,
-            orbit_params=params,
-            device=device)
-        dytop_actor = DyToPActor(
-            dytop_env=dytop_env,
-            topo_gnn=topo_gnn,
-            train_id=train_id,
-            device=device)
-        dytop = DyToP(
-            dytop_env=dytop_env,
-            dytop_actor=dytop_actor,
-            lr=lr,
-            early_stop=early_stop)
-        
+            with open(os.path.join(problem_path, f'StarLink_DataSetForAgent100_5000_Size{size}.pkl'), 'rb') as file:
+                dataset = pickle.load(file)
+
+            dytop_env = DyToPEnv(
+                obj=obj,
+                problem_path=problem_path,
+                num_path=path_num,
+                edge_disjoint=edge_disjoint,
+                dist_metric=dist_metric,
+                rho=rho,
+                work_dir=work_dir,
+                dataset=dataset,
+                num_failure=num_failure,
+                orbit_params=params,
+                device=device)
+            dytop_actor = DyToPActor(
+                dytop_env=dytop_env,
+                topo_gnn=topo_gnn,
+                train_id=train_id,
+                device=device)
+            dytop = DyToP(
+                dytop_env=dytop_env,
+                dytop_actor=dytop_actor,
+                lr=lr,
+                early_stop=early_stop)
+
     else:
 
         print('Iridium...')
@@ -247,7 +321,7 @@ def benchmark(args):
         
     # ========== test  
     if test:
-        test_id = train_id + f'_quantized-{quantized}_compiled-{compiled}'
+        test_id = train_id + f'_quantized-{quantized}_compiled-{compiled}_failures-{num_failure}'
         test_log_dir = AssetManager.test_log_dir(work_dir, create_dir=True)
         output_csv = os.path.join(test_log_dir, f'{test_id}.csv')
 
@@ -321,7 +395,7 @@ if __name__ == '__main__':
     parser.add_argument('--early-stop', type=bool, default=False, help='whether to stop early')
 
     # testing hyper-parameters
-    parser.add_argument('--failures', type=int, default=0, help='number of edge failures')
+    parser.add_argument('--failures', type=float, default=0, help='number of edge failures (%)')
     parser.add_argument('--quantized', action="store_true", help='whether to quantize the model')
     parser.add_argument('--compiled', action="store_true", help='whether to JIT-compile the model')
 

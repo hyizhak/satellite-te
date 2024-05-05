@@ -22,7 +22,7 @@ class TopoGNN(nn.Module):
             edge_feats=1,
             out_feats=8,
             num_heads=8,)
-        self.edge_feature = nn.Linear(16, 8)
+        self.edge_feature = nn.Linear(16, 1)
 
     def forward(self, G, efeatures):
 

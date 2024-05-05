@@ -19,5 +19,6 @@ for intensity in 5 7p5 10 12p5 15; do
     nohup python ${IRIDIUM_NEW_FORM_ADAPTER_SCRIPT} \
         --input-path ${INPUT_DIR} \
         --output-path ${OUTPUT_DIR} \
+        --teal-like \
         --intensity ${intensity} &
 done

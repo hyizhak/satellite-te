@@ -6,10 +6,15 @@ import torch
 import psutil
 import GPUtil
 import statistics
+import re
 
 from _common import *
 
+from pathlib import Path
+
 from lib.teal import TealEnv, TealActor, Teal
+from lib.data.starlink.orbit_params import OrbitParams
+from lib.data.starlink.ism import InterShellMode as ISM
 
 # ========== Benchmarking arguments
 # Benchmarking targets
@@ -69,6 +74,41 @@ def benchmark(args):
     work_dir = args.work_dir
 
     # ========== init teal env, actor, model
+    path = Path(problem_path)
+
+    match = re.search(r'\d+', path.parts[-2])
+    size = int(match.group())
+
+    print(f'Loading reduced Starlink data for size {size}')
+
+    reduced = 8 if size == 500 else 2
+
+    if path.parts[-1] == 'GrdStation_teal':
+
+        params = OrbitParams(
+            GrdStationNum=222,
+            Offset5=round(2 * 22 * 72 / reduced),
+            graph_node_num=round(2 * 22 * 72 / reduced) * 2 + 222,
+            isl_cap=200,
+            uplink_cap=800,
+            downlink_cap=800,
+            ism=ISM.GRD_STATION,
+        )
+
+    elif path.parts[-1] == 'ISL_teal':
+
+        params = OrbitParams(
+            GrdStationNum=0,
+            Offset5=round(2 * 22 * 72 / reduced),
+            graph_node_num=round(2 * 22 * 72 / reduced) * 2,
+            isl_cap=200,
+            uplink_cap=800,
+            downlink_cap=800,
+            ism=ISM.ISL,
+        )
+
+    print(params)
+
     teal_instances = []
     
     train_id = _teal_train_id(
@@ -94,6 +134,7 @@ def benchmark(args):
             test_all=test_all,
             test_size=test_size_per_topo,
             work_dir=work_dir,
+            orbit_params=params,
             num_failure=num_failure,
             device=device)
         teal_actor = TealActor(

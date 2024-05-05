@@ -60,7 +60,7 @@ class DyToPActor(nn.Module):
         problem_G_sample = self.env.obs["problem"]
         in_sizes = {'flow': 1,
                     'path': 1,
-                    'link': 8}
+                    'link': 1}
         
         self.AlloGNN = AlloGNN(self.env, in_sizes=in_sizes , hidden_size=128, 
                                out_sizes={'path':1}, num_heads=128, 

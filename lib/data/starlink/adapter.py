@@ -19,6 +19,7 @@ import networkx as nx
 import scipy.io as sio
 from tqdm import tqdm
 from . import SPOnGrid as SPG
+from . import SPOnGridReduced as SPGR
 from . import ShortestPath as ShP
 
 class StarlinkAdapter():
@@ -230,7 +231,7 @@ class StarlinkMixAdapter():
         
         os.makedirs(output_path)
 
-        file_paths = [os.path.join(self.input_path, self.input_topo_file_template.format(intensity)) for intensity in INTENSITY]
+        file_paths = [os.path.join(self.input_path, f'DataSetForSaTE{intensity}', self.input_topo_file_template.format(intensity)) for intensity in INTENSITY]
 
         # ========= Orbit Shell Parameters =========
         OrbitNum1 = 72
@@ -386,6 +387,197 @@ class StarlinkMixAdapter():
             file.close()
 
         AssetManager.save_dataset_(output_path, self.input_topo_file_template.format('Mixed') , starlink_mixed_dataset)
+
+
+class StarlinkReducedAdapter():
+
+    def __init__(self, input_path, topo_file_template, data_per_topo, ism, reduced, teal_form, parallel=None):
+        self.input_path = input_path
+        self.input_topo_file_template = topo_file_template
+        
+        self.data_per_topo = data_per_topo
+
+        self.ism = ism
+
+        self.reduced = reduced
+        self.teal_form = teal_form
+        
+        self.parallel = parallel
+
+    def adapt(self, output_path):
+
+        data_num = self.data_per_topo
+
+        ism = self.ism
+
+        data_idx = 0
+
+        if os.path.exists(output_path):
+            shutil.rmtree(output_path)
+        
+        os.makedirs(output_path)
+
+        size = 500 if self.reduced == 8 else 1500
+
+        file_path = os.path.join(self.input_path, self.input_topo_file_template)
+
+        # ========= Orbit Shell Parameters =========
+        OrbitNum1 = round(72/self.reduced)
+        SatNum1   = 22
+
+        OrbitNum2 = round(72/self.reduced)
+        SatNum2   = 22
+
+        GrdStationNum = 222
+        
+        # =========== Generate Intra-Shell Static Graph =========
+        LatMat1 = [0 for i in range(OrbitNum1 * SatNum1)]
+        LatMat2 = [0 for i in range(OrbitNum2 * SatNum2)]
+        LatLimit = 90
+
+        Offset1 = 0
+        Offset2 = OrbitNum1 * SatNum1
+        Offset3 = OrbitNum1 * SatNum1 + OrbitNum2 * SatNum2
+        
+        satellite_num = Offset3
+
+        G1, EMap1, E1 = MSG.Inter_Shell_Graph(OrbitNum1, SatNum1, LatMat1, Offset1, LatLimit)
+        G2, EMap2, E2 = MSG.Inter_Shell_Graph(OrbitNum2, SatNum2, LatMat2, Offset2, LatLimit)
+
+        starlink_reduced_dataset = []
+
+        with open(file_path, 'rb') as file:
+
+            for k in tqdm(range(data_num)):
+                
+                data = pickle.load(file)
+                
+                G_interShell = data['InterShell_GrdRelay']
+                ISL_interShell = data['InterShell_ISL']
+
+                match ism:
+                    case ISM.GRD_STATION:
+                        E_inter = []
+                        for SatIndex in range(len(G_interShell)):
+                            if int(G_interShell[SatIndex]) >= 0:
+                                E_inter.append([SatIndex, int(G_interShell[SatIndex] + Offset3)])
+                                E_inter.append([int(G_interShell[SatIndex] + Offset3), SatIndex])   
+
+                        graph_node_num = Offset3 * 2 + GrdStationNum
+
+                    case ISM.ISL:
+                        E_inter = []
+                        for SatIndex in range(len(ISL_interShell[0])): # 2 to 1
+                            if ISL_interShell[0][SatIndex] >= 0:
+                                S2 = SatIndex + Offset2 
+                                S1 = int(ISL_interShell[0][SatIndex])
+                                E_inter.append([S2, S1])
+                                E_inter.append([S1, S2])
+
+                        graph_node_num = Offset3 * 2
+                        
+                sat2user = generate_sat2user(satellite_num, GrdStationNum, ism)
+                
+                E = E1 + E2 + E_inter
+
+                if self.teal_form and k == 0:
+                    AssetManager.save_graph_egde_(output_path, 0, E)
+
+                    path_dict = {}
+
+                    for src in tqdm(range(satellite_num)):
+                        for dst in range(satellite_num):
+                            if src == dst:
+                                continue
+                            paths = SPGR.SPOnGrid(src,dst,
+                                    G_interShell, 
+                                    ISL_interShell, 
+                                    ism, 
+                                    5,
+                                    self.reduced)
+
+                            while len(paths) < 5:
+                                paths.append(paths[0])
+
+                            usr_src = sat2user(src)
+                            usr_dst = sat2user(dst)  
+                            
+                            path_dict[(src, dst)] = paths
+                            path_dict[(src, usr_dst)] = [path + [usr_dst] for path in paths]
+                            path_dict[(usr_src, dst)] = [[usr_src] + path for path in paths]
+                            path_dict[(usr_src, usr_dst)] = [[usr_src] + path + [usr_dst] for path in paths]
+                            
+
+                    AssetManager.save_pathform_(output_path, 0, 5, 'False', 'min-hop',  path_dict)
+
+                train_num = int(data_num * 0.8)
+
+                if self.teal_form:
+
+                    demand_dict = {}
+            
+                    flowset = data['FlowSet']
+                    for flow in flowset:
+                        src = sat2user(flow[0])
+                        dst = sat2user(flow[1])
+                        d = flow[2]
+                        
+                        outer = demand_dict.get(src, {})
+                        inner = outer.get(dst, 0)
+                        outer[dst] = inner + d
+                        demand_dict[src] = outer
+                    
+                    edge_list = []
+                    weight_list = []
+                    
+                    for src, inner in demand_dict.items():
+                        for dst, amount in inner.items():
+                            edge_list.append([src, dst])
+                            weight_list.append(amount)
+                        
+                    demand_matrix = {
+                        'size': graph_node_num,
+                        'edge_list': np.array(edge_list, dtype=np.uint16),
+                        'weight_list': np.array(weight_list, dtype=np.float32),
+                    }
+                                    
+                    if k < train_num:
+                        AssetManager.save_tm_train_separate_(output_path, 0, k, demand_matrix)
+                    elif k < data_num:
+                        AssetManager.save_tm_test_separate_(output_path, 0, k - train_num, demand_matrix)
+
+                else:
+
+                    tm_dict = {}
+                    path_dict = {}
+                    
+                    flowset = data['FlowSet']
+
+                    for flow in flowset:
+                        src = sat2user(flow[0])
+                        dst = sat2user(flow[1])
+                        d = flow[2]
+
+                        paths = SPGR.SPOnGrid(flow[0],flow[1],
+                                G_interShell, 
+                                ISL_interShell, 
+                                ism, 
+                                5,
+                                self.reduced)
+
+                        while len(paths) < 5:
+                            paths.append(paths[0])  
+                        
+                        path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in paths]
+                        tm_dict[f'{src}, {dst}'] = tm_dict.get(f'{src}, {dst}', 0) + d
+
+
+                    data_idx += 1
+
+                    starlink_reduced_dataset.append({'graph': E, 'tm': tm_dict, 'path': path_dict, 'data_idx': data_idx})
+
+        if not self.teal_form:
+            AssetManager.save_dataset_(output_path, os.path.basename(file_path), starlink_reduced_dataset)
 
 
 class IridiumAdapter():

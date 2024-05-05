@@ -164,13 +164,6 @@ class DyToPEnv(object):
                "capacity": self.capacities_tensor,
                "traffic": tm,
                "problem": problem_G}
-        # simulate link failures in testing
-        if self.num_failure > 0 and self.idx_start == self.test_start:
-            idx_failure = torch.tensor(
-                random.sample(range(self.num_edge_node),
-                self.num_failure)).to(self.device)
-            # obs[idx_failure] = 0
-            obs['capacity'][idx_failure] = 0
         return obs
 
     def _next_obs(self):
@@ -632,7 +625,10 @@ class DyToPEnv(object):
             for e in edge_list:
                 if (e[0] == e[1]) :
                     continue
-                G.add_edge(e[0], e[1], capacity=params.isl_cap)
+                if random.random() < self.num_failure:
+                    G.add_edge(e[0], e[1], capacity=0)
+                else:
+                    G.add_edge(e[0], e[1], capacity=params.isl_cap)
                 # G.add_edge(e[1], e[0], capacity=params.isl_cap)
             ## 2. User-satellite links
             for i in range(params.Offset5):
