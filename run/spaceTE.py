@@ -263,6 +263,11 @@ def benchmark(args):
             early_stop=early_stop)
 
         
+
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters())
+    
+    logging.info(f'<Model Parameters> {count_parameters(dytop_actor)}')
     
 
     # ========== train

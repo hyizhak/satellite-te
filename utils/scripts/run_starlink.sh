@@ -11,18 +11,18 @@ PROBLEM_LIST=$(cd $INPUT_DIR/starlink; ls)
 
 echo "Problem list: $PROBLEM_LIST"
 
-for problem in starlink_500 starlink_1500; do
+for problem in DataSetForSaTE25; do
     echo "Processing problem: $problem"
     # Run Teal
-    python ${TEAL_SCRIPT} \
-        --problem-path ${INPUT_DIR}/starlink/${problem}/ISL_teal \
-        --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM}
+    # python ${TEAL_SCRIPT} \
+    #     --problem-path ${INPUT_DIR}/starlink/${problem}/ISL_teal \
+    #     --output-dir ${OUTPUT_DIR} \
+    #     --topo-num ${RUN_TOPO_NUM}
 
-    python ${TEAL_SCRIPT} \
-        --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation_teal \
-        --output-dir ${OUTPUT_DIR} \
-        --topo-num ${RUN_TOPO_NUM}
+    # python ${TEAL_SCRIPT} \
+    #     --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation_teal \
+    #     --output-dir ${OUTPUT_DIR} \
+    #     --topo-num ${RUN_TOPO_NUM}
     # # Run Gurobi
     # python ${LP_SCRIPT} \
     #     --problem-path ${OUTPUT_DIR}/${problem} \
@@ -36,19 +36,19 @@ for problem in starlink_500 starlink_1500; do
     #         --failures 0.001 \
     #         --test
 
-#     nohup python ${SPACETE_SCRIPT} \
-#             --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
-#             --output-dir ${OUTPUT_DIR} \
-#             --topo-num ${RUN_TOPO_NUM} \
-#             --failures 0.05 \
-#             --test
+    python ${SPACETE_SCRIPT} \
+            --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
+            --output-dir ${OUTPUT_DIR} \
+            --topo-num ${RUN_TOPO_NUM} \
+            --failures 0.05 \
+            --test
 
-#     nohup python ${SPACETE_SCRIPT} \
-#             --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
-#             --output-dir ${OUTPUT_DIR} \
-#             --topo-num ${RUN_TOPO_NUM} \
-#             --failures 0.001 \
-#             --test
+    # nohup python ${SPACETE_SCRIPT} \
+    #         --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
+    #         --output-dir ${OUTPUT_DIR} \
+    #         --topo-num ${RUN_TOPO_NUM} \
+    #         --failures 0.001 \
+    #         --train --test
 
 #     nohup python ${SPACETE_SCRIPT} \
 #             --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \

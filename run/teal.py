@@ -150,6 +150,11 @@ def benchmark(args):
         
         teal_instances.append(teal)
 
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters())
+    
+    logging.info(f'<Model Parameters> {count_parameters(teal_actor)}')
+
     # ========== train
     if train:
         train_log_path = os.path.join(

@@ -644,6 +644,8 @@ class DyToPEnv(object):
                     G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
                     G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
             
+            print(G.number_of_nodes(), G.number_of_edges())
+            print(len(G))
             return G
         
         else:

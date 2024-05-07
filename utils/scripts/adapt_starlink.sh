@@ -33,22 +33,22 @@ OUTPUT_DIR=/home/azureuser/cloudfiles/code/te_problems/starlink
 #     --reduced 8 
 
 python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${INPUT_DIR}/starlink_1500 \
+        --input-path ${INPUT_DIR}/starlink_500 \
         --output-path ${OUTPUT_DIR} \
         --intensity 100 \
         --inter-shell-mode "GrdStation" \
         --data-per-topo 100 \
         --teal_form \
-        --reduced 2
+        --reduced 8
 
 python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${INPUT_DIR}/starlink_1500 \
+        --input-path ${INPUT_DIR}/starlink_500 \
         --output-path ${OUTPUT_DIR} \
         --intensity 100 \
         --inter-shell-mode "ISL" \
         --data-per-topo 100 \
         --teal_form \
-        --reduced 2
+        --reduced 8
 
 # nohup python ${STARLINK_ADAPTER_SCRIPT} \
 #         --input-path ${INPUT_DIR}/starlink \
