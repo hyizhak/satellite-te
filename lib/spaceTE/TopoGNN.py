@@ -16,12 +16,12 @@ class TopoGNN(nn.Module):
             in_feats=1,
             edge_feats=1,
             out_feats=16,
-            num_heads=16,)
+            num_heads=2,)
         self.edge_gat_2 = dglnn.EdgeGATConv(
             in_feats=16,
             edge_feats=1,
             out_feats=8,
-            num_heads=8,)
+            num_heads=2,)
         self.edge_feature = nn.Linear(16, 1)
 
     def forward(self, G, efeatures):

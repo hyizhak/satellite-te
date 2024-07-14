@@ -1,10 +1,11 @@
 PROJECT_ROOT=$(dirname $(readlink -f $0))/../..
 
-AZURE_PROBLEM_DIR=/home/azureuser/cloudfiles/code/te_problems
-ALL_PROBLEM_LIST=$(cd $AZURE_PROBLEM_DIR; ls)
+# AZURE_PROBLEM_DIR=/home/azureuser/cloudfiles/code/te_problems
+# ALL_PROBLEM_LIST=$(cd $AZURE_PROBLEM_DIR; ls)
 
-INPUT_DIR=${PROJECT_ROOT}/input
+INPUT_DIR=/data/projects/11003765/sate/input
 OUTPUT_DIR=${PROJECT_ROOT}/output
+SCRIPTS_DIR=${PROJECT_ROOT}/utils/scripts
 
 TEAL_SCRIPT=${PROJECT_ROOT}/run/teal.py
 LP_SCRIPT=${PROJECT_ROOT}/run/lp.py
