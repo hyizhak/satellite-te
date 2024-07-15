@@ -165,5 +165,6 @@ input
 raw_data
 utils/scripts/*.out
 
+sing_image/
 
 

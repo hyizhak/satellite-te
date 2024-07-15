@@ -397,53 +397,56 @@ class TealEnv(object):
 
     def read_graph(self) -> networkx.Graph:
         """Return network topos from json file."""
-        E = AssetManager.load_graph_edge(self.problem_path, self.topo_idx)
+        try:
+            G = AssetManager.load_graph(self.problem_path, self.topo_idx)
+        except FileNotFoundError:
+            E = AssetManager.load_graph_edge(self.problem_path, self.topo_idx)
 
-        params = self.orbit_params
-        sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
-        G = nx.DiGraph()
-        G.add_nodes_from(range(params.graph_node_num))
+            params = self.orbit_params
+            sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
+            G = nx.DiGraph()
+            G.add_nodes_from(range(params.graph_node_num))
 
-        ## 1. Inter-satellite links
-        for e in E:
-            G.add_edge(e[0], e[1], capacity=params.isl_cap)
+            ## 1. Inter-satellite links
+            for e in E:
+                G.add_edge(e[0], e[1], capacity=params.isl_cap)
 
-        ## 2. User-satellite links
-        for i in range(params.Offset5):
-            # Uplink
-            G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
-            # Downlink
-            G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
+            ## 2. User-satellite links
+            for i in range(params.Offset5):
+                # Uplink
+                G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
+                # Downlink
+                G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
 
-        ## 3. Inter ground station links
-        for i in range(params.GrdStationNum):
-            for j in range(params.GrdStationNum):
-                if i == j:
-                    continue
-                G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
-                G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+            ## 3. Inter ground station links
+            for i in range(params.GrdStationNum):
+                for j in range(params.GrdStationNum):
+                    if i == j:
+                        continue
+                    G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
+                    G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
 
-        ## 4. User-ground station links
-        for i in range(params.Offset5):
-            for j in range(params.GrdStationNum):
-                G.add_edge(sat2user(i), j + params.Offset5, capacity=0)
-                G.add_edge(j + params.Offset5, sat2user(i), capacity=0)
+            ## 4. User-ground station links
+            for i in range(params.Offset5):
+                for j in range(params.GrdStationNum):
+                    G.add_edge(sat2user(i), j + params.Offset5, capacity=0)
+                    G.add_edge(j + params.Offset5, sat2user(i), capacity=0)
 
-        ## 5. Satellite-ground station links
-        for i in range(params.Offset5):
-            for j in range(params.GrdStationNum):
-                # if G.has_edge(i, j + params.Offset5):
-                #     continue
-                G.add_edge(i, j + params.Offset5, capacity=0)
-                G.add_edge(j + params.Offset5, i, capacity=0)
+            ## 5. Satellite-ground station links
+            for i in range(params.Offset5):
+                for j in range(params.GrdStationNum):
+                    # if G.has_edge(i, j + params.Offset5):
+                    #     continue
+                    G.add_edge(i, j + params.Offset5, capacity=0)
+                    G.add_edge(j + params.Offset5, i, capacity=0)
 
-        ## 6. Inter-user links
-        for i in range(params.Offset5):
-            for j in range(params.Offset5):
-                if i == j:
-                    continue
-                G.add_edge(sat2user(i), sat2user(j), capacity=0)
-                G.add_edge(sat2user(j), sat2user(i), capacity=0)
+            ## 6. Inter-user links
+            for i in range(params.Offset5):
+                for j in range(params.Offset5):
+                    if i == j:
+                        continue
+                    G.add_edge(sat2user(i), sat2user(j), capacity=0)
+                    G.add_edge(sat2user(j), sat2user(i), capacity=0)
 
         return G
 

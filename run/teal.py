@@ -77,37 +77,40 @@ def benchmark(args):
     path = Path(problem_path)
 
     match = re.search(r'\d+', path.parts[-2])
-    size = int(match.group())
+    if match is None:
+        params = None
+    else:
+        size = int(match.group())
 
-    print(f'Loading reduced Starlink data for size {size}')
+        print(f'Loading reduced Starlink data for size {size}')
 
-    reduced = 8 if size == 500 else 2
+        reduced = 8 if size == 500 else 2
 
-    if path.parts[-1] == 'GrdStation_teal':
+        if path.parts[-1] == 'GrdStation_teal':
 
-        params = OrbitParams(
-            GrdStationNum=222,
-            Offset5=round(2 * 22 * 72 / reduced),
-            graph_node_num=round(2 * 22 * 72 / reduced) * 2 + 222,
-            isl_cap=200,
-            uplink_cap=800,
-            downlink_cap=800,
-            ism=ISM.GRD_STATION,
-        )
+            params = OrbitParams(
+                GrdStationNum=222,
+                Offset5=round(2 * 22 * 72 / reduced),
+                graph_node_num=round(2 * 22 * 72 / reduced) * 2 + 222,
+                isl_cap=200,
+                uplink_cap=800,
+                downlink_cap=800,
+                ism=ISM.GRD_STATION,
+            )
 
-    elif path.parts[-1] == 'ISL_teal':
+        elif path.parts[-1] == 'ISL_teal':
 
-        params = OrbitParams(
-            GrdStationNum=0,
-            Offset5=round(2 * 22 * 72 / reduced),
-            graph_node_num=round(2 * 22 * 72 / reduced) * 2,
-            isl_cap=200,
-            uplink_cap=800,
-            downlink_cap=800,
-            ism=ISM.ISL,
-        )
+            params = OrbitParams(
+                GrdStationNum=0,
+                Offset5=round(2 * 22 * 72 / reduced),
+                graph_node_num=round(2 * 22 * 72 / reduced) * 2,
+                isl_cap=200,
+                uplink_cap=800,
+                downlink_cap=800,
+                ism=ISM.ISL,
+            )
 
-    print(params)
+        print(params)
 
     teal_instances = []
     
@@ -289,7 +292,7 @@ if __name__ == '__main__':
     # training hyper-parameters
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
     parser.add_argument('--epochs', type=int, default=3, help='number of training epochs')
-    parser.add_argument('--bsz', type=int, default=20, help='batch size')
+    parser.add_argument('--bsz', type=int, default=1, help='batch size')
     parser.add_argument('--samples', type=int, default=5, help='number of COMA samples')
     parser.add_argument('--admm-steps', type=int, default=5, help='number of ADMM steps')
     parser.add_argument('--early-stop', type=bool, default=False, help='whether to stop early')
