@@ -556,6 +556,10 @@ class TealEnv(object):
     def matrix_from_tm_file(self, file_path)->np.ndarray:
         with open(file_path, 'rb') as f:
             data = pickle.load(f)
+
+        if 'size' not in data:
+            return data
+        
         # Reconstruct the traffic matrix
         size = data['size']
         edge_list = data['edge_list']

@@ -1,4 +1,4 @@
-Mon Jul 15 17:49:45 2024       
+Tue Jul 16 12:01:45 2024       
 +---------------------------------------------------------------------------------------+
 | NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
 |-----------------------------------------+----------------------+----------------------+
@@ -7,19 +7,7 @@ Mon Jul 15 17:49:45 2024
 |                                         |                      |               MIG M. |
 |=========================================+======================+======================|
 |   0  NVIDIA A100-SXM4-40GB          On  | 00000000:03:00.0 Off |                    0 |
-| N/A   45C    P0              63W / 311W |      0MiB / 40960MiB |      0%      Default |
-|                                         |                      |             Disabled |
-+-----------------------------------------+----------------------+----------------------+
-|   1  NVIDIA A100-SXM4-40GB          On  | 00000000:41:00.0 Off |                    0 |
-| N/A   42C    P0              54W / 311W |      0MiB / 40960MiB |      0%      Default |
-|                                         |                      |             Disabled |
-+-----------------------------------------+----------------------+----------------------+
-|   2  NVIDIA A100-SXM4-40GB          On  | 00000000:81:00.0 Off |                    0 |
-| N/A   43C    P0              55W / 311W |      0MiB / 40960MiB |      0%      Default |
-|                                         |                      |             Disabled |
-+-----------------------------------------+----------------------+----------------------+
-|   3  NVIDIA A100-SXM4-40GB          On  | 00000000:C1:00.0 Off |                    0 |
-| N/A   42C    P0              54W / 311W |      0MiB / 40960MiB |      0%      Default |
+| N/A   43C    P0              52W / 311W |      0MiB / 40960MiB |      0%      Default |
 |                                         |                      |             Disabled |
 +-----------------------------------------+----------------------+----------------------+
                                                                                          
@@ -31,31 +19,31 @@ Mon Jul 15 17:49:45 2024
 |  No running processes found                                                           |
 +---------------------------------------------------------------------------------------+
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-			Resource Usage on 2024-07-15 18:42:42.323688:
+			Resource Usage on 2024-07-16 12:02:04.912797:
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	JobId: 7765082.pbs101
+	JobId: 7767582.pbs101
 	Project: 11003765
-	Exit Status: 0
+	Exit Status: 1
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	NCPUs: Requested(64), Used(64)
-	CPU Time Used: 03:05:37
-	Memory: Requested(440gb), Used(180582296kb)
-	Vmem Used: 200328956kb
-	Walltime: Requested(12:30:00), Used(00:52:57)
+	NCPUs: Requested(16), Used(16)
+	CPU Time Used: 00:00:12
+	Memory: Requested(110gb), Used(1639940kb)
+	Vmem Used: 4021188kb
+	Walltime: Requested(02:30:00), Used(00:00:20)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	Execution Nodes Used: (x1000c1s4b0n0:ngpus=4:ncpus=64:mem=461373440kb)
+	Execution Nodes Used: (x1000c1s0b0n1:ngpus=1:ncpus=16:mem=115343360kb)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-	GPU Duration: 52.97mins
-	GPU Energy Consumed: 62.79W
-	GPU Max GPU Memory Used: 33.22GB
-	Memory Throughput Rate (Average): x1000c1s4b0n0:(gpu1:1%+gpu3:0%+gpu0:0%+gpu2:0%)
-	Memory Throughput Rate (Max): x1000c1s4b0n0:(gpu1:53%+gpu3:0%+gpu0:0%+gpu2:0%)
-	Memory Throughput Rate (Min): x1000c1s4b0n0:(gpu1:0%+gpu3:0%+gpu0:0%+gpu2:0%)
-	GPU SM Utilization (Average): x1000c1s4b0n0:(gpu1:5%+gpu3:0%+gpu0:0%+gpu2:0%)
-	GPU SM Utilization (Max): x1000c1s4b0n0:(gpu1:100%+gpu3:0%+gpu0:0%+gpu2:0%)
-	GPU SM Utilization (Min): x1000c1s4b0n0:(gpu1:0%+gpu3:0%+gpu0:0%+gpu2:0%)
+	GPU Duration: 21.23secs
+	GPU Energy Consumed: 25.02W
+	GPU Max GPU Memory Used: 0.0B
+	Memory Throughput Rate (Average): x1000c1s0b0n1:(gpu0:0%)
+	Memory Throughput Rate (Max): x1000c1s0b0n1:(gpu0:0%)
+	Memory Throughput Rate (Min): x1000c1s0b0n1:(gpu0:0%)
+	GPU SM Utilization (Average): x1000c1s0b0n1:(gpu0:23%)
+	GPU SM Utilization (Max): x1000c1s0b0n1:(gpu0:47%)
+	GPU SM Utilization (Min): x1000c1s0b0n1:(gpu0:0%)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Warning: GPUs 3, 0, 2 have a percentage of 0 utilisation.
+Warning: None
 GPU application profile: Low
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

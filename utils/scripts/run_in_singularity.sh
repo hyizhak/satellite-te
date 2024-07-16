@@ -33,4 +33,4 @@ singularity exec ${GPU_FLAG} --bind ${INPUT_DIR}:${INPUT_DIR} --bind ${PROJECT_R
   source ~/.bashrc && \
   conda activate satte && \
   ${SCRIPTS_DIR}/${SCRIPT_TO_RUN}
-" > ${SCRIPTS_DIR}/log/${SCRIPT_TO_RUN}_${TIMESTAMP}.log 2>&1
+" > ${SCRIPTS_DIR}/log/${SCRIPT_TO_RUN}_${PBS_JOBID}_${TIMESTAMP}.log 2>&1

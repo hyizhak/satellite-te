@@ -73,22 +73,22 @@ for problem in DataSetForSaTE100; do
 #         --train --test
 done
 
-for problem in starlink_500 starlink_1500; do
-    for mode in ISL GrdStation; do
-        echo -e "\n\n\n Processing problem: $problem with mode: $mode"
+# for problem in starlink_500 starlink_1500; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Processing problem: $problem with mode: $mode"
 
-        # python ${SPACETE_SCRIPT} \
-        #     --problem-path ${INPUT_DIR}/${problem}/${mode} \
-        #     --output-dir ${OUTPUT_DIR}/scalability \
-        #     --topo-num ${RUN_TOPO_NUM} \
-        #     --train --test
+#         # python ${SPACETE_SCRIPT} \
+#         #     --problem-path ${INPUT_DIR}/${problem}/${mode} \
+#         #     --output-dir ${OUTPUT_DIR}/scalability \
+#         #     --topo-num ${RUN_TOPO_NUM} \
+#         #     --train --test
 
-        python ${TEAL_SCRIPT} \
-            --problem-path ${INPUT_DIR}/${problem}/${mode}_teal \
-            --output-dir ${OUTPUT_DIR}/teal \
-            --topo-num ${RUN_TOPO_NUM}
-    done
-done
+#         python ${TEAL_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/${problem}/${mode}_teal \
+#             --output-dir ${OUTPUT_DIR}/teal \
+#             --topo-num ${RUN_TOPO_NUM}
+#     done
+# done
 
 echo -e "\n\n\n Processing problem: Iridium"
 
@@ -96,6 +96,3 @@ python ${TEAL_SCRIPT} \
     --problem-path ${INPUT_DIR}/iridium/IridiumDataSet14day20sec_Int15 \
     --output-dir ${OUTPUT_DIR}/teal \
     --topo-num ${RUN_TOPO_NUM}
-
-# Copy the output directory to the specified location
-cp -r $OUTPUT_DIR /home/users/nus/e1310988/satte/satellite-te
