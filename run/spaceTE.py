@@ -74,6 +74,7 @@ def benchmark(args):
     num_failure = args.failures
     quantized = args.quantized
     compiled = args.compiled
+    model_path = args.model_path
     # output
     work_dir = args.work_dir
 
@@ -139,10 +140,7 @@ def benchmark(args):
                 with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_A.pkl'), 'rb') as file:
                     data_part1 = pickle.load(file)
 
-                with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_B.pkl'), 'rb') as file:
-                    data_part2 = pickle.load(file)
-
-                dataset = data_part1 + data_part2
+                dataset = data_part1
 
 
             dytop_env = DyToPEnv(
@@ -334,7 +332,7 @@ def benchmark(args):
             print(','.join(TEST_HEADERS), file=f)
             
         if not train:
-            dytop.load_model(quantized, compiled)
+            dytop.load_model(quantized, compiled, model_path)
         dytop.test(
             num_admm_step=admm_step_num,
             output_header=TEST_HEADERS,
@@ -403,6 +401,7 @@ if __name__ == '__main__':
     parser.add_argument('--failures', type=float, default=0, help='number of edge failures (%)')
     parser.add_argument('--quantized', action="store_true", help='whether to quantize the model')
     parser.add_argument('--compiled', action="store_true", help='whether to JIT-compile the model')
+    parser.add_argument('--model-path', type=str, default=None, help='path to the model to load')
 
     args = parser.parse_args()
 

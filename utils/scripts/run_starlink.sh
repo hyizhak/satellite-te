@@ -11,8 +11,8 @@ PROBLEM_LIST=$(cd $INPUT_DIR/starlink; ls)
 
 echo "Problem list: $PROBLEM_LIST"
 
-for problem in DataSetForSaTE100; do
-    echo "Processing problem: $problem"
+# for problem in DataSetForSaTE100; do
+    # echo "Processing problem: $problem"
     # Run Teal
     # python ${TEAL_SCRIPT} \
     #     --problem-path ${INPUT_DIR}/starlink/${problem}/ISL_teal \
@@ -54,24 +54,24 @@ for problem in DataSetForSaTE100; do
     #         --failures 0.001 \
     #         --train --test
 
-#     nohup python ${SPACETE_SCRIPT} \
-#             --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
-#             --output-dir ${OUTPUT_DIR} \
-#             --topo-num ${RUN_TOPO_NUM} \
-#             --failures 0.05 \
-#             --test
-# nohup python ${SPACETE_SCRIPT} \
-#         --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
-#         --output-dir ${OUTPUT_DIR} \
-#         --topo-num ${RUN_TOPO_NUM} \
-#         --train --test
+    # nohup python ${SPACETE_SCRIPT} \
+    #         --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
+    #         --output-dir ${OUTPUT_DIR} \
+    #         --topo-num ${RUN_TOPO_NUM} \
+    #         --failures 0.05 \
+    #         --test
+    # nohup python ${SPACETE_SCRIPT} \
+    #         --problem-path ${INPUT_DIR}/starlink/${problem}/GrdStation \
+    #         --output-dir ${OUTPUT_DIR} \
+    #         --topo-num ${RUN_TOPO_NUM} \
+    #         --train --test
 
-# nohup python ${SPACETE_SCRIPT} \
-#         --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
-#         --output-dir ${OUTPUT_DIR} \
-#         --topo-num ${RUN_TOPO_NUM} \
-#         --train --test
-done
+    # nohup python ${SPACETE_SCRIPT} \
+    #         --problem-path ${INPUT_DIR}/starlink/${problem}/ISL \
+    #         --output-dir ${OUTPUT_DIR} \
+    #         --topo-num ${RUN_TOPO_NUM} \
+    #         --train --test
+# done
 
 # for problem in starlink_500 starlink_1500; do
 #     for mode in ISL GrdStation; do
@@ -90,9 +90,50 @@ done
 #     done
 # done
 
-echo -e "\n\n\n Processing problem: Iridium"
+# echo -e "\n\n\n Processing problem: Iridium"
 
-python ${TEAL_SCRIPT} \
-    --problem-path ${INPUT_DIR}/iridium/IridiumDataSet14day20sec_Int15 \
-    --output-dir ${OUTPUT_DIR}/teal \
-    --topo-num ${RUN_TOPO_NUM}
+# python ${TEAL_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/iridium/IridiumDataSet14day20sec_Int15 \
+#     --output-dir ${OUTPUT_DIR}/teal \
+#     --topo-num ${RUN_TOPO_NUM}
+
+python ${SPACETE_SCRIPT} \
+    --problem-path ${INPUT_DIR}/starlink/starlink_1500/GrdStation \
+    --output-dir ${OUTPUT_DIR}/scalability \
+    --topo-num ${RUN_TOPO_NUM} \
+    --train --test
+
+python ${SPACETE_SCRIPT} \
+    --problem-path ${INPUT_DIR}/starlink/starlink_1500/ISL \
+    --output-dir ${OUTPUT_DIR}/scalability \
+    --topo-num ${RUN_TOPO_NUM} \
+    --train --test
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/starlink_1500/GrdStation \
+#     --output-dir ${OUTPUT_DIR}/scalability_500_model \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test \
+#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_GrdStation_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/GrdStation \
+#     --output-dir ${OUTPUT_DIR}/scalability_500_model \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test \
+#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_GrdStation_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/starlink_1500/ISL \
+#     --output-dir ${OUTPUT_DIR}/scalability \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test \
+#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_ISL_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#     --output-dir ${OUTPUT_DIR}/scalability_500_model \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test \
+#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_ISL_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt

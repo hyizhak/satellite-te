@@ -493,11 +493,11 @@ class StarlinkReducedAdapter():
                                     G_interShell, 
                                     ISL_interShell, 
                                     ism, 
-                                    5,
+                                    1,
                                     self.reduced)
 
-                            while len(paths) < 5:
-                                paths.append(paths[0])
+                            # while len(paths) < 5:
+                            #     paths.append(paths[0])
 
                             usr_src = sat2user(src)
                             usr_dst = sat2user(dst)  
@@ -562,11 +562,11 @@ class StarlinkReducedAdapter():
                                 G_interShell, 
                                 ISL_interShell, 
                                 ism, 
-                                5,
+                                1,
                                 self.reduced)
 
-                        while len(paths) < 5:
-                            paths.append(paths[0])  
+                        # while len(paths) < 5:
+                        #     paths.append(paths[0])  
                         
                         path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in paths]
                         tm_dict[f'{src}, {dst}'] = tm_dict.get(f'{src}, {dst}', 0) + d

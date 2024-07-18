@@ -168,8 +168,8 @@ class DyToP():
     def save_model(self):
         self.actor.save_model()
 
-    def load_model(self, quantized, compiled):
-        self.actor.load_model(quantized)
+    def load_model(self, quantized, compiled, model_path=None):
+        self.actor.load_model(quantized, model_path)
         if compiled:
             print("JIT-compiling")
             self.actor = torch.compile(self.actor, mode="max-autotune")

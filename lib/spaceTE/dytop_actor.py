@@ -99,14 +99,13 @@ class DyToPActor(nn.Module):
         logging.info('Initializing spaceTE model')
         self.apply(weight_initialization)
 
-    def load_model(self, quantized):
+    def load_model(self, quantized, model_path=None):
         """Load from model fname."""
+        mpath = self.model_path(True) if model_path is None else model_path
         if quantized :
-            mpath = self.model_path(True)
             logging.info(f'Loading spaceTE model from {mpath}')
             self.load_state_dict(torch.load(mpath, map_location=self.device))
         else:
-            mpath = self.model_path(True)
             logging.info(f'Loading spaceTE model from {mpath}')
             self.load_state_dict(torch.load(mpath, map_location=self.device))
 
