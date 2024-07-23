@@ -22,4 +22,4 @@ cd $PBS_O_WORKDIR
 nvidia-smi
 
 # Run the Singularity run script
-./run_in_singularity.sh adapt_starlink.sh
+./run_in_singularity.sh run_starlink.sh

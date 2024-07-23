@@ -417,7 +417,15 @@ class StarlinkReducedAdapter():
         
         os.makedirs(output_path)
 
-        size = 500 if self.reduced == 8 else 1500
+        match self.reduced:
+            case 18:
+                size = 176
+            case 8:
+                size = 500
+            case 6:
+                size = 528
+            case 2:
+                size = 1500
 
         file_path = os.path.join(self.input_path, self.input_topo_file_template)
 
@@ -493,11 +501,11 @@ class StarlinkReducedAdapter():
                                     G_interShell, 
                                     ISL_interShell, 
                                     ism, 
-                                    1,
+                                    5,
                                     self.reduced)
 
-                            # while len(paths) < 5:
-                            #     paths.append(paths[0])
+                            while len(paths) < 5:
+                                paths.append(paths[0])
 
                             usr_src = sat2user(src)
                             usr_dst = sat2user(dst)  
@@ -562,11 +570,11 @@ class StarlinkReducedAdapter():
                                 G_interShell, 
                                 ISL_interShell, 
                                 ism, 
-                                1,
+                                5,
                                 self.reduced)
 
-                        # while len(paths) < 5:
-                        #     paths.append(paths[0])  
+                        while len(paths) < 5:
+                            paths.append(paths[0])  
                         
                         path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in paths]
                         tm_dict[f'{src}, {dst}'] = tm_dict.get(f'{src}, {dst}', 0) + d

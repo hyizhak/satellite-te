@@ -173,14 +173,22 @@ def benchmark(args):
 
             print(f'Loading reduced Starlink data for size {size}')
 
-            reduced = 8 if size == 500 else 2
+            match size:
+                case 176:
+                    reduced = 18
+                case 500:
+                    reduced = 8
+                case 528:
+                    reduced = 6
+                case 1500:
+                    reduced = 2
 
             if path.parts[-1] == 'GrdStation':
 
                 params = OrbitParams(
                     GrdStationNum=222,
                     Offset5=round(2 * 22 * 72 / reduced),
-                    graph_node_num=round(2 * 22 * 72 / reduced) + 222,
+                    graph_node_num=round(2 * 22 * 72 / reduced) * 2 + 222,
                     isl_cap=200,
                     uplink_cap=800,
                     downlink_cap=800,

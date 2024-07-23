@@ -1,0 +1,7 @@
+# Python bytecode
+__pycache__/
+
+# Data
+/input_raw
+/input
+/output

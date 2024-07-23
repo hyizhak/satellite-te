@@ -73,23 +73,6 @@ echo "Problem list: $PROBLEM_LIST"
     #         --train --test
 # done
 
-# for problem in starlink_500 starlink_1500; do
-#     for mode in ISL GrdStation; do
-#         echo -e "\n\n\n Processing problem: $problem with mode: $mode"
-
-#         # python ${SPACETE_SCRIPT} \
-#         #     --problem-path ${INPUT_DIR}/${problem}/${mode} \
-#         #     --output-dir ${OUTPUT_DIR}/scalability \
-#         #     --topo-num ${RUN_TOPO_NUM} \
-#         #     --train --test
-
-#         python ${TEAL_SCRIPT} \
-#             --problem-path ${INPUT_DIR}/${problem}/${mode}_teal \
-#             --output-dir ${OUTPUT_DIR}/teal \
-#             --topo-num ${RUN_TOPO_NUM}
-#     done
-# done
-
 # echo -e "\n\n\n Processing problem: Iridium"
 
 # python ${TEAL_SCRIPT} \
@@ -97,43 +80,44 @@ echo "Problem list: $PROBLEM_LIST"
 #     --output-dir ${OUTPUT_DIR}/teal \
 #     --topo-num ${RUN_TOPO_NUM}
 
-python ${SPACETE_SCRIPT} \
-    --problem-path ${INPUT_DIR}/starlink/starlink_1500/GrdStation \
-    --output-dir ${OUTPUT_DIR}/scalability \
-    --topo-num ${RUN_TOPO_NUM} \
-    --train --test
+# for problem in starlink_176; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Processing problem: $problem with mode: $mode"
 
-python ${SPACETE_SCRIPT} \
-    --problem-path ${INPUT_DIR}/starlink/starlink_1500/ISL \
-    --output-dir ${OUTPUT_DIR}/scalability \
-    --topo-num ${RUN_TOPO_NUM} \
-    --train --test
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/scalability \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --train --test
+
+#         # python ${TEAL_SCRIPT} \
+#         #     --problem-path ${INPUT_DIR}/starlink/${problem}/${mode}_teal \
+#         #     --output-dir ${OUTPUT_DIR}/teal \
+#         #     --topo-num ${RUN_TOPO_NUM}
+#     done
+# done
 
 # python ${SPACETE_SCRIPT} \
 #     --problem-path ${INPUT_DIR}/starlink/starlink_1500/GrdStation \
-#     --output-dir ${OUTPUT_DIR}/scalability_500_model \
+#     --output-dir ${OUTPUT_DIR}/scalability \
 #     --topo-num ${RUN_TOPO_NUM} \
-#     --test \
-#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_GrdStation_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
-
-# python ${SPACETE_SCRIPT} \
-#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/GrdStation \
-#     --output-dir ${OUTPUT_DIR}/scalability_500_model \
-#     --topo-num ${RUN_TOPO_NUM} \
-#     --test \
-#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_GrdStation_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
-
+#     --train --test
 
 # python ${SPACETE_SCRIPT} \
 #     --problem-path ${INPUT_DIR}/starlink/starlink_1500/ISL \
 #     --output-dir ${OUTPUT_DIR}/scalability \
 #     --topo-num ${RUN_TOPO_NUM} \
-#     --test \
-#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_ISL_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+#     --train --test
 
-# python ${SPACETE_SCRIPT} \
-#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
-#     --output-dir ${OUTPUT_DIR}/scalability_500_model \
-#     --topo-num ${RUN_TOPO_NUM} \
-#     --test \
-#     --model-path ${OUTPUT_DIR}/scalability/starlink_500_ISL_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+for problem in starlink_176 starlink_500 starlink_528 starlink_1500 DataSetForSaTE100; do
+    for mode in ISL GrdStation; do
+        echo -e "\n\n\n Testing 176 model on problem: $problem with mode: $mode"
+
+        python ${SPACETE_SCRIPT} \
+            --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+            --output-dir ${OUTPUT_DIR}/scalability_176_model \
+            --topo-num ${RUN_TOPO_NUM} \
+            --test \
+            --model-path ${OUTPUT_DIR}/scalability/starlink_176_${mode}_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+    done
+done

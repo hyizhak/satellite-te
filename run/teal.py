@@ -84,7 +84,15 @@ def benchmark(args):
 
         print(f'Loading reduced Starlink data for size {size}')
 
-        reduced = 8 if size == 500 else 2
+        match size:
+            case 176:
+                reduced = 18
+            case 500:
+                reduced = 8
+            case 528:
+                reduced = 6
+            case 1500:
+                reduced = 2
 
         if path.parts[-1] == 'GrdStation_teal':
 
@@ -230,7 +238,8 @@ def benchmark(args):
         for idx, teal in enumerate(teal_instances):
             start_time = time.time()
             teal.load_model()
-            load_time = time.time() - start_time
+            # load_time = time.time() - start_time
+            load_time = 0
             teal.test(
                 admm_step_num=admm_step_num,
                 output_header=TEST_HEADERS,

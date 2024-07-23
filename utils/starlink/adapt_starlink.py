@@ -66,7 +66,17 @@ elif args.reduced is not None:
     else:
         output_path = os.path.join(args.output_path, args.prefix, args.inter_shell_mode)
 
-    size = 500 if args.reduced == 8 else 1500
+
+    match args.reduced:
+        case 18:
+            size = 176
+        case 8:
+            size = 500
+        case 6:
+            size = 528
+        case 2:
+            size = 1500
+
 
     StarlinkReducedAdapter(
         input_path=args.input_path,
