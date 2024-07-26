@@ -109,15 +109,14 @@ echo "Problem list: $PROBLEM_LIST"
 #     --topo-num ${RUN_TOPO_NUM} \
 #     --train --test
 
-for problem in starlink_176 starlink_500 starlink_528 starlink_1500 DataSetForSaTE100; do
+for problem in starlink_500 starlink_1500 DataSetForSaTE100; do
     for mode in ISL GrdStation; do
-        echo -e "\n\n\n Testing 176 model on problem: $problem with mode: $mode"
+        echo -e "\n\n\n Training model model on problem: $problem with mode: $mode"
 
         python ${SPACETE_SCRIPT} \
             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
-            --output-dir ${OUTPUT_DIR}/scalability_176_model \
+            --output-dir ${OUTPUT_DIR}/scalability \
             --topo-num ${RUN_TOPO_NUM} \
-            --test \
-            --model-path ${OUTPUT_DIR}/scalability/starlink_176_${mode}_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+            --train --test 
     done
 done

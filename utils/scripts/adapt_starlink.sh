@@ -3,19 +3,21 @@ source $(dirname $(readlink -f $0))/env
 
 RAW_INPUT_DIR=${INPUT_DIR}/raw/starlink
 
-# for intensity in 100; do
-#     nohup python ${STARLINK_ADAPTER_SCRIPT} \
-#         --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \
-#         --output-path ${INPUT_DIR} \
-#         --intensity ${intensity} \
-#         --inter-shell-mode "GrdStation"
+for intensity in 25 50 75; do
+    nohup python ${STARLINK_ADAPTER_SCRIPT} \
+        --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \
+        --output-path ${INPUT_DIR} \
+        --intensity ${intensity} \
+        --data-per-topo 2000 \
+        --inter-shell-mode "GrdStation"
     
-#     nohup python ${STARLINK_ADAPTER_SCRIPT} \
-#         --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \
-#         --output-path ${INPUT_DIR} \
-#         --intensity ${intensity} \
-#         --inter-shell-mode "ISL"
-# done
+    nohup python ${STARLINK_ADAPTER_SCRIPT} \
+        --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \
+        --output-path ${INPUT_DIR} \
+        --intensity ${intensity} \
+        --data-per-topo 2000 \
+        --inter-shell-mode "ISL"
+done
 
 # python ${STARLINK_ADAPTER_SCRIPT} \
 #     --input-path ${RAW_INPUT_DIR}/starlink_1500 \
@@ -49,37 +51,33 @@ RAW_INPUT_DIR=${INPUT_DIR}/raw/starlink
 #         --teal_form \
 #         --reduced 2
 
-python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${RAW_INPUT_DIR}/starlink_176 \
-        --output-path ${INPUT_DIR} \
-        --intensity 100 \
-        --inter-shell-mode "GrdStation" \
-        --data-per-topo 100 \
-        --reduced 18
+# python ${STARLINK_ADAPTER_SCRIPT} \
+#         --input-path ${RAW_INPUT_DIR}/starlink_176 \
+#         --output-path ${INPUT_DIR} \
+#         --intensity 100 \
+#         --inter-shell-mode "GrdStation" \
+#         --reduced 18
 
-python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${RAW_INPUT_DIR}/starlink_176 \
-        --output-path ${INPUT_DIR} \
-        --intensity 100 \
-        --inter-shell-mode "ISL" \
-        --data-per-topo 100 \
-        --reduced 18
+# python ${STARLINK_ADAPTER_SCRIPT} \
+#         --input-path ${RAW_INPUT_DIR}/starlink_176 \
+#         --output-path ${INPUT_DIR} \
+#         --intensity 100 \
+#         --inter-shell-mode "ISL" \
+#         --reduced 18
 
-python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${RAW_INPUT_DIR}/starlink_528 \
-        --output-path ${INPUT_DIR} \
-        --intensity 100 \
-        --inter-shell-mode "GrdStation" \
-        --data-per-topo 100 \
-        --reduced 6
+# python ${STARLINK_ADAPTER_SCRIPT} \
+#         --input-path ${RAW_INPUT_DIR}/starlink_528 \
+#         --output-path ${INPUT_DIR} \
+#         --intensity 100 \
+#         --inter-shell-mode "GrdStation" \
+#         --reduced 6
 
-python ${STARLINK_ADAPTER_SCRIPT} \
-        --input-path ${RAW_INPUT_DIR}/starlink_528 \
-        --output-path ${INPUT_DIR} \
-        --intensity 100 \
-        --inter-shell-mode "ISL" \
-        --data-per-topo 100 \
-        --reduced 6
+# python ${STARLINK_ADAPTER_SCRIPT} \
+#         --input-path ${RAW_INPUT_DIR}/starlink_528 \
+#         --output-path ${INPUT_DIR} \
+#         --intensity 100 \
+#         --inter-shell-mode "ISL" \
+#         --reduced 6
 
 # nohup python ${STARLINK_ADAPTER_SCRIPT} \
 #         --input-path ${RAW_INPUT_DIR}/starlink \
