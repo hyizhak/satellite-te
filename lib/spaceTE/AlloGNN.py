@@ -13,7 +13,7 @@ class AlloGNN(nn.Module):
         out_sizes,
         num_heads,
         canonical_etypes,
-        dropout=0.0,
+        dropout=0.05,
     ):
         """Graph convolution model inspired by `SCENE <https://arxiv.org/pdf/2301.03512.pdf>`.
             The model cascades multiple layers of graph convolution to aggregate information
@@ -35,7 +35,6 @@ class AlloGNN(nn.Module):
         super().__init__()
         self.env = env
         self.in_sizes = in_sizes
-        self.edge_index_values = self.env.edge_index_values
         self.hidden_size = hidden_size
         self.out_sizes = out_sizes
         self.num_heads = num_heads
@@ -57,32 +56,39 @@ class AlloGNN(nn.Module):
         self.full_graph_conv = torch.nn.ModuleDict()
         self.full_graph_conv["conv_1"] = torch.nn.ModuleDict()
         self.full_graph_conv["conv_2"] = torch.nn.ModuleDict()
-        self.full_graph_conv["conv_3"] = torch.nn.ModuleDict()
-        self.full_graph_conv["conv_4"] = torch.nn.ModuleDict()
+        # self.full_graph_conv["conv_3"] = torch.nn.ModuleDict()
+        # self.full_graph_conv["conv_4"] = torch.nn.ModuleDict()
         for edge in canonical_etypes:
+            # [('flow', 'uses', 'path'), ('link', 'constitutes', 'path')]
             which_graph_conv = None
-            if (edge[0] == edge[2]) and (edge[0] != self.category):
-                # Self-conv excluding the target node
-                which_graph_conv = "conv_1"
-            elif (edge[0] != edge[2]) and (edge[2] != self.category):
-                # Conv from all nodes to others but the target node
-                which_graph_conv = "conv_2"
-            elif (edge[2] == self.category) and (edge[0] != self.category):
-                # Conv to the target node
-                which_graph_conv = "conv_3"
-            elif (edge[2] == self.category) and (edge[0] == self.category):
-                # Self update
-                which_graph_conv = "conv_4"
-            else:
-                NotImplementedError(
-                    f"Undefined graph convolution for edge {edge}")
+            # if (edge[0] == edge[2]) and (edge[0] != self.category):
+            #     # Self-conv excluding the target node
+            #     which_graph_conv = "conv_1"
+            # elif (edge[0] != edge[2]) and (edge[2] != self.category):
+            #     # Conv from all nodes to others but the target node
+            #     which_graph_conv = "conv_2"
+            # elif (edge[2] == self.category) and (edge[0] != self.category):
+            #     # Conv to the target node
+            #     which_graph_conv = "conv_3"
+            # elif (edge[2] == self.category) and (edge[0] == self.category):
+            #     # Self update
+            #     which_graph_conv = "conv_4"
+            # else:
+            #     NotImplementedError(
+            #         f"Undefined graph convolution for edge {edge}")
 
-            if which_graph_conv == "conv1" and edge[0] == "link" :
-                self.full_graph_conv[which_graph_conv][str(edge)] = ResidualEdgeGATConv(
-                    in_feats=hidden_size, out_feats=hidden_size, edge_feats=1, num_heads=num_heads)
+            if (edge[0] == 'link'):
+                which_graph_conv = "conv_1"
+            elif (edge[0] == 'flow'):
+                which_graph_conv = "conv_2"
+
+            if which_graph_conv == "conv_1":
+                self.full_graph_conv[which_graph_conv][str(edge)] = ResidualEdgeGATConv(in_feats=hidden_size, out_feats=hidden_size, num_heads=num_heads, edge_feats=1)
             elif which_graph_conv is not None:
                 self.full_graph_conv[which_graph_conv][str(edge)] = ResidualEdgeGATConv(
                     in_feats=hidden_size, out_feats=hidden_size, num_heads=num_heads)
+                
+        print(self.full_graph_conv)
 
         # Initialize decoder
         self.decoder_1 = torch.nn.Linear(
@@ -92,7 +98,7 @@ class AlloGNN(nn.Module):
             in_features=hidden_size, out_features=self.out_size)
         self.dropout_2 = torch.nn.Dropout(p=dropout)
 
-    def forward(self, graph, link_feature):
+    def forward(self, graph, e2p_feature):
         """Forward pass of the model.
 
         Args:
@@ -138,6 +144,7 @@ class AlloGNN(nn.Module):
             for curr_conv_key, curr_conv in conv_dict.items():
                 # Get key of target node
                 curr_tuple = tuple(map(str, curr_conv_key[2:-2].split("', '")))
+                src_ntype = curr_tuple[0]
                 target_ntype = curr_tuple[2]
 
                 # Extract subgraph
@@ -145,9 +152,9 @@ class AlloGNN(nn.Module):
                 src_feats = graph.nodes[curr_tuple[0]].data["x"]
                 dst_feats = graph.nodes[curr_tuple[2]].data["x"]
 
-                if target_ntype == 'link' :
+                if src_ntype == 'link' :
                     embeddings[target_ntype] += curr_conv(
-                        curr_subgraph, (src_feats, dst_feats), link_feature)
+                        curr_subgraph, (src_feats, dst_feats), e2p_feature)
                 else:
                     embeddings[target_ntype] += curr_conv(
                             curr_subgraph, (src_feats, dst_feats))
@@ -158,9 +165,9 @@ class AlloGNN(nn.Module):
                 graph.nodes[node_key].data["x"] = F.relu(embedding)
 
             # Residual values
-            if conv_key == "conv_2":
+            if conv_key == "conv_1":
                 x_res1 = graph.nodes[self.category].data["x"]
-            if conv_key == "conv_3":
+            if conv_key == "conv_2":
                 x_res2 = graph.nodes[self.category].data["x"]
 
         # Decoder
@@ -171,6 +178,5 @@ class AlloGNN(nn.Module):
         x = F.relu(x)
         x = self.dropout_2(x)
         x = self.decoder_2(x)
-        x = F.relu(x)
-
+        
         return x

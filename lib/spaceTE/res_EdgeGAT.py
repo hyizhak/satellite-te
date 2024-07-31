@@ -4,6 +4,9 @@ import torch
 from dgl.nn.pytorch.utils import Identity
 from dgl.nn import GATConv
 from dgl.nn import EdgeGATConv
+from dgl.nn import GATv2Conv
+
+from .edgegatv2conv import EdgeGATv2Conv
 
 
 class ResidualEdgeGATConv(torch.nn.Module):
@@ -55,11 +58,16 @@ class ResidualEdgeGATConv(torch.nn.Module):
         # Use default GATConv if there are no edge features and EdgeGATConv if there are edge features
         # Residual and bias are set to false, because they are handled in this wrapper class separately
         if self.edge_feats is None:
-            self.conv = GATConv(in_feats, int(out_feats / num_heads), num_heads,
-                                allow_zero_in_degree=True, residual=False, bias=False)
+
+            # self.conv = GATConv(in_feats, int(out_feats / num_heads), num_heads, feat_drop=0.05, attn_drop=0.05, allow_zero_in_degree=True, residual=False, bias=False)
+            
+            self.conv = GATv2Conv(in_feats, int(out_feats / num_heads), num_heads, feat_drop=0.05, attn_drop=0.05, residual=False, allow_zero_in_degree=True, bias=False)
+
         else:
-            self.conv = EdgeGATConv(in_feats, int(out_feats / num_heads), num_heads, edge_feats,
-                                    allow_zero_in_degree=True, residual=False, bias=False)
+
+            # self.conv = EdgeGATConv(in_feats, int(out_feats / num_heads), num_heads, edge_feats, allow_zero_in_degree=True, residual=False, bias=False)
+
+            self.conv = EdgeGATv2Conv(in_feats, int(out_feats / num_heads), num_heads, edge_feats, residual=False, allow_zero_in_degree=True, bias=False)
 
         if residual and residual_type == "concat":
             # Take destination feature size as the input size for the residual connection

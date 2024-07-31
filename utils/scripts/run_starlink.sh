@@ -109,14 +109,29 @@ echo "Problem list: $PROBLEM_LIST"
 #     --topo-num ${RUN_TOPO_NUM} \
 #     --train --test
 
-for problem in starlink_500 starlink_1500 DataSetForSaTE100; do
-    for mode in ISL GrdStation; do
-        echo -e "\n\n\n Training model model on problem: $problem with mode: $mode"
+for problem in starlink_500; do
+    for mode in ISL; do
+        for num_layer in 0 1 2 3 10; do
+            echo -e "\n\n\n Training model on problem: $problem with mode: $mode and num_layer: $num_layer"
 
-        python ${SPACETE_SCRIPT} \
-            --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
-            --output-dir ${OUTPUT_DIR}/scalability \
-            --topo-num ${RUN_TOPO_NUM} \
-            --train --test 
+            python ${SPACETE_SCRIPT} \
+                --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+                --output-dir ${OUTPUT_DIR}/scalability \
+                --topo-num ${RUN_TOPO_NUM} \
+                --train --epochs 1 --layers ${num_layer} --test 
+        done
     done
 done
+
+# for problem in starlink_500 starlink_1500 DataSetForSaTE100; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Testing Iridium model on problem: $problem with mode: $mode"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/scalability \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --test \
+#             --model-path /data/projects/11003765/sate/satte/satellite-te/output/iridium/new_form_Intensity_15_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-3_bsz-32_sample-5_rho-1.0_step-5.pt
+#     done
+# done

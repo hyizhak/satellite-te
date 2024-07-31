@@ -214,7 +214,6 @@ class TopFormulation(AbstractFormulation):
 
     @staticmethod
     def compute_paths(data, path_num, edge_disjoint, mode):
-        G = construct_from_edge(data, mode)
         paths_dict = data['path']
         return paths_dict
 

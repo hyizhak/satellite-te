@@ -12,7 +12,7 @@ import re
 from _common import *
 from pathlib import Path
 
-from lib.spaceTE import DyToPEnv, DyToPActor, DyToP
+from lib.spaceTE import SaTEEnv, SaTEActor, SaTE
 from lib.data.starlink.orbit_params import OrbitParams
 from lib.data.starlink.ism import InterShellMode as ISM
 
@@ -63,6 +63,7 @@ def benchmark(args):
     # actor hyper-parameters
     topo_gnn = args.topo_gnn
     rho = args.rho
+    layers = args.layers
     # training hyper-parameters
     lr = args.lr
     early_stop = args.early_stop
@@ -78,12 +79,12 @@ def benchmark(args):
     # output
     work_dir = args.work_dir
 
-    # ========== init dytop env, actor, mode
+    # ========== init SaTE env, actor, mode
     
-    train_id = _dytop_train_id(
+    train_id = _sate_train_id(
         topo_num = topo_num, train_sz=trainval_tm_per_topo, val_ratio=val_ratio,
         lr=lr, epoches=epoch_num, batch_sz=batch_size,
-        coma_sample=sample_num,
+        coma_sample=sample_num, layers=layers,
         rho=rho, admm_step=admm_step_num
     )
 
@@ -143,7 +144,7 @@ def benchmark(args):
                 dataset = data_part1
 
 
-            dytop_env = DyToPEnv(
+            sate_env = SaTEEnv(
                 obj=obj,
                 problem_path=problem_path,
                 num_path=path_num,
@@ -155,14 +156,15 @@ def benchmark(args):
                 num_failure=num_failure,
                 orbit_params=params,
                 device=device)
-            dytop_actor = DyToPActor(
-                dytop_env=dytop_env,
+            sate_actor = SaTEActor(
+                sate_env=sate_env,
                 topo_gnn=topo_gnn,
+                layers=layers,
                 train_id=train_id,
                 device=device)
-            dytop = DyToP(
-                dytop_env=dytop_env,
-                dytop_actor=dytop_actor,
+            sate = SaTE(
+                sate_env=sate_env,
+                sate_actor=sate_actor,
                 lr=lr,
                 early_stop=early_stop)
             
@@ -212,7 +214,7 @@ def benchmark(args):
             with open(os.path.join(problem_path, f'StarLink_DataSetForAgent100_5000_Size{size}.pkl'), 'rb') as file:
                 dataset = pickle.load(file)
 
-            dytop_env = DyToPEnv(
+            sate_env = SaTEEnv(
                 obj=obj,
                 problem_path=problem_path,
                 num_path=path_num,
@@ -224,14 +226,15 @@ def benchmark(args):
                 num_failure=num_failure,
                 orbit_params=params,
                 device=device)
-            dytop_actor = DyToPActor(
-                dytop_env=dytop_env,
+            sate_actor = SaTEActor(
+                sate_env=sate_env,
                 topo_gnn=topo_gnn,
+                layers=layers,
                 train_id=train_id,
                 device=device)
-            dytop = DyToP(
-                dytop_env=dytop_env,
-                dytop_actor=dytop_actor,
+            sate = SaTE(
+                sate_env=sate_env,
+                sate_actor=sate_actor,
                 lr=lr,
                 early_stop=early_stop)
 
@@ -239,14 +242,14 @@ def benchmark(args):
 
         print('Iridium...')
         
-        intensity = number = path.parts[-1].split("_")[1]
+        intensity = path.parts[-1].split("_")[1]
 
         print(f'Loading Iridium data for intensity {intensity}')
 
         with open(os.path.join(problem_path, f'Iridium_DataSetForAgent_{intensity}_60480.pkl'), 'rb') as file:
             dataset = pickle.load(file)
 
-        dytop_env = DyToPEnv(
+        sate_env = SaTEEnv(
             obj=obj,
             problem_path=problem_path,
             num_path=path_num,
@@ -257,14 +260,15 @@ def benchmark(args):
             dataset=dataset,
             num_failure=num_failure,
             device=device)
-        dytop_actor = DyToPActor(
-            dytop_env=dytop_env,
+        sate_actor = SaTEActor(
+            sate_env=sate_env,
             topo_gnn=topo_gnn,
+            layers=layers,
             train_id=train_id,
             device=device)
-        dytop = DyToP(
-            dytop_env=dytop_env,
-            dytop_actor=dytop_actor,
+        sate = SaTE(
+            sate_env=sate_env,
+            sate_actor=sate_actor,
             lr=lr,
             early_stop=early_stop)
 
@@ -273,7 +277,7 @@ def benchmark(args):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters())
     
-    logging.info(f'<Model Parameters> {count_parameters(dytop_actor)}')
+    logging.info(f'<Model Parameters> {count_parameters(sate_actor)}')
     
 
     # ========== train
@@ -298,7 +302,7 @@ def benchmark(args):
         logging.info('Training starts')
         train_start_time = time.time()
 
-        dytop.train(
+        sate.train(
             num_epoch=epoch_num,
             batch_size=batch_size,
             num_sample=sample_num
@@ -310,7 +314,7 @@ def benchmark(args):
             gpu_load.append(gpu.load)
             gpu_memory_usage.append(gpu.memoryUtil)
 
-        dytop.save_model()
+        sate.save_model()
 
         train_stop_time = time.time()
         
@@ -340,8 +344,8 @@ def benchmark(args):
             print(','.join(TEST_HEADERS), file=f)
             
         if not train:
-            dytop.load_model(quantized, compiled, model_path)
-        dytop.test(
+            sate.load_model(quantized, compiled, model_path)
+        sate.test(
             num_admm_step=admm_step_num,
             output_header=TEST_HEADERS,
             output_placeholder=TEST_PLACEHOLDER,
@@ -351,14 +355,14 @@ def benchmark(args):
     return
 
 
-def _dytop_train_id(
+def _sate_train_id(
         topo_num, train_sz, val_ratio,    # training data set
         lr, epoches, batch_sz,  # training hyperparams
-        coma_sample,            # RL hyperparams
+        coma_sample, layers,             # RL hyperparams
         rho, admm_step):        # ADMM hyperparams
     return f'spaceTE_topo-{topo_num}_tsz-{train_sz}_vr-{val_ratio}_' + \
-    f'lr-{lr}_ep-{epoches}_bsz-{batch_sz}_' +\
-    f'sample-{coma_sample}_' +\
+    f'lr-{lr}_ep-{epoches}_bsz-{batch_sz}_' + \
+    f'sample-{coma_sample}_' + f'layers-{layers}_' + \
     f'rho-{rho}_step-{admm_step}'
     
     
@@ -396,6 +400,7 @@ if __name__ == '__main__':
     # actor hyper-parameters
     parser.add_argument('--topo-gnn', type=str, default="EdgeGAT", help='type of Topology GNN layer')
     parser.add_argument('--rho', type=float, default=1.0, help='rho in ADMM')
+    parser.add_argument('--layers', type=int, default=0, help='number of hidden layers in Topolohy GNN')
 
     # training hyper-parameters
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')

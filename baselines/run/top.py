@@ -8,8 +8,9 @@ import time
 sys.path.append("..")
 
 from lib.lp.problem import Problem
-from lib.lp.algorithms import TopFormulation, Objective
-from lib.lp.algorithms.load_starlink import construct_from_edge,dict_to_numpy, split_tm
+from lib.lp.algorithms import TopFormulation, PathFormulation, Objective
+from lib.lp.traffic_matrix import *
+from lib.lp.algorithms.load_starlink import construct_from_edge,dict_to_numpy, pop_split
 
 from _common import *
 
@@ -26,7 +27,6 @@ def benchmark(args):
     top_percentage = args.top_percentage
     num_paths, edge_disjoint, dist_metric = args.path_num,False, args.dist_metric
     work_dir = args.work_dir
-    test_log_dir = AssetManager.test_log_dir(work_dir, create_dir=True)
     scale_factor = args.scale_factor
     intensity = args.intensity
     size = args.size
@@ -35,21 +35,17 @@ def benchmark(args):
     POP_ratio = args.POP_ratio
 
     problem_path, topo_num, obj = args.problem_path, args.topo_num, args.obj
-    if args.test_tm_per_topo is None:
-        test_all = True
-        test_size_per_topo = None
-    else:
-        test_all = False
-        test_size_per_topo = args.test_tm_per_topo
     
     logging.info("LPTop solver")
-    paths_fname = f"/home/azureuser/cloudfiles/code/Users/e1310988/satellite-te/input/starlink/DataSetForSaTE{intensity}/{mode}/StarLink_DataSetForAgent{intensity}_10_A.pkl"
-    # paths_fname = f'/home/azureuser/cloudfiles/code/te_problems/dataset_sample/{mode}/StarLink_DataSetForAgent100_10_Size{size}.pkl'
+    if size == 5000:
+        paths_fname = f"/home/azureuser/cloudfiles/code/Users/e1310988/satellite-te/input/starlink/DataSetForSaTE{intensity}/{mode}/StarLink_DataSetForAgent{intensity}_10_A.pkl"
+    else:
+        paths_fname = f'/home/azureuser/cloudfiles/code/te_problems/dataset_sample/{mode}/StarLink_DataSetForAgent100_10_Size{size}.pkl'
     with open(paths_fname, 'rb') as file:
         data = pickle.load(file)
     logging.info(f"Loaded data from {paths_fname}")
 
-    for topo_idx in range(3): # For every topology
+    for topo_idx in range(1): # For every topology
 
         if POP_ratio != 1:
             data_ = data[topo_idx]
@@ -57,40 +53,54 @@ def benchmark(args):
             tm = dict_to_numpy(tm, mode, size)
             # num_paths = data_['path']
             num_paths = 5
-            G = construct_from_edge(data_['graph'], mode, online=False, POP_ratio=POP_ratio, size=size)
+            G = construct_from_edge(data_['graph'], mode, online, 1, size)
             start_time = time.time()
             logging.info('seperating tms')
-            tm = tm / POP_ratio
+            tms = pop_split(tm, POP_ratio)
             logging.info('seperated tms')
+            split_time = time.time() - start_time
+
             demand = 0
             throughput = 0
-            load_time = time.time() - start_time
 
-            for i in range(1):
-                problem = Problem(G, tm, scale_factor=scale_factor)
-                pf = TopFormulation(
-                    data = data_,
-                    top_percentage=top_percentage,
-                    objective=Objective.get_obj_from_str(obj),
-                    path_num=num_paths,
-                    edge_disjoint=edge_disjoint,
-                    dist_metric=dist_metric,
-                    mode=mode
-                )
+            start_time = time.time()
+
+            problem = Problem(G, scale_factor=scale_factor)
+            # pf = TopFormulation(
+            #         data = data_,
+            #         top_percentage=top_percentage,
+            #         objective=Objective.get_obj_from_str(obj),
+            #         path_num=num_paths,
+            #         edge_disjoint=edge_disjoint,
+            #         dist_metric=dist_metric,
+            #         mode=mode
+            #     )
+            
+            pf = PathFormulation(
+                data=data_,
+                objective=Objective.get_obj_from_str(obj),
+                path_num=num_paths,
+                edge_disjoint=edge_disjoint,
+                dist_metric=dist_metric,
+            )
+
+            for i in range(POP_ratio):
+                problem.traffic_matrix = GenericTrafficMatrix(problem, tms[i])
                 pf.solve(problem)
                 total_demand = problem.total_demand
                 demand += total_demand
                 throughput += pf.obj_val
-                runtime = pf.runtime
+            runtime = time.time() - start_time
+            # logging.info(pf.buildtime)
+            logging.info(pf.runtime)
             result_line = TEST_PLACEHOLDER.format(
                 topo_idx,
-                0,
                 demand,
                 throughput,
                 throughput / demand,
-                load_time + runtime * POP_ratio,
+                split_time + runtime,
             )
-            logging.info(load_time)
+            logging.info(split_time)
             logging.info(runtime)
             with open(args.output_csv, 'a') as f:
                 print(result_line, file=f)
@@ -104,13 +114,11 @@ def benchmark(args):
             num_paths = 5
                 
             G = construct_from_edge(data_['graph'], mode, online, POP_ratio, size)
-            if test_all:
-                test_size_per_topo = 1
-                
-            for tm_idx in tqdm(range(test_size_per_topo), desc=f"Computing topology {topo_idx}"):
-                start_time = time.time()
-                #logging.info(f"{tm.shape[0]},{len(G)}")
-                problem = Problem(G, tm, scale_factor=scale_factor)
+
+            start_time = time.time()
+            #logging.info(f"{tm.shape[0]},{len(G)}")
+            problem = Problem(G, tm, scale_factor=scale_factor)
+            if top_percentage != 1:
                 pf = TopFormulation(
                     data = data_,
                     top_percentage=top_percentage,
@@ -120,19 +128,26 @@ def benchmark(args):
                     dist_metric=dist_metric,
                     mode=mode
                 )
-                pf.solve(problem)
-
-                total_demand = problem.total_demand
-                result_line = TEST_PLACEHOLDER.format(
-                    topo_idx,
-                    tm_idx,
-                    total_demand,
-                    pf.obj_val,
-                    pf.obj_val / total_demand,
-                    time.time() - start_time,
+            else:
+                pf = PathFormulation(
+                    data=data_,
+                    objective=Objective.get_obj_from_str(obj),
+                    path_num=num_paths,
+                    edge_disjoint=edge_disjoint,
+                    dist_metric=dist_metric,
                 )
-                with open(args.output_csv, 'a') as f:
-                    print(result_line, file=f)
+            pf.solve(problem)
+
+            total_demand = problem.total_demand
+            result_line = TEST_PLACEHOLDER.format(
+                topo_idx,
+                total_demand,
+                pf.obj_val,
+                pf.obj_val / total_demand,
+                time.time() - start_time,
+            )
+            with open(args.output_csv, 'a') as f:
+                print(result_line, file=f)
 
     
 

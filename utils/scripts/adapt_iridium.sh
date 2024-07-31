@@ -12,13 +12,13 @@ source $(dirname $(readlink -f $0))/env
 #         --output-path ${OUTPUT_DIR}
 # done
 
-INPUT_DIR=/home/azureuser/cloudfiles/code/Users/e1310988/satellite-te/raw_data/iridium
-OUTPUT_DIR=/home/azureuser/cloudfiles/code/te_problems/iridium_new_form
+RAW_INPUT_DIR=${INPUT_DIR}/raw
+OUTPUT_DIR=${INPUT_DIR}/iridium/new_form
 
-for intensity in 5 7p5 10 12p5 15; do
-    nohup python ${IRIDIUM_NEW_FORM_ADAPTER_SCRIPT} \
-        --input-path ${INPUT_DIR} \
+for intensity in 15; do
+    python ${IRIDIUM_NEW_FORM_ADAPTER_SCRIPT} \
+        --input-path ${RAW_INPUT_DIR} \
         --output-path ${OUTPUT_DIR} \
-        --teal-like \
-        --intensity ${intensity} &
+        --intensity ${intensity} \
+        --data-per-topo 1000
 done

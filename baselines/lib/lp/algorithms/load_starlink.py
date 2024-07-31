@@ -36,6 +36,11 @@ params_2 = lambda reduced: OrbitParams(
 
 def construct_from_edge(edge_list, param, online=False, POP_ratio=1, size=None):
 
+    GrdRatio = 0.675
+    ISLRatio = [72, 278, 420]
+    ISLLength = [1584, 348, 720]
+    ISLIndex = [18528, 18876, 19596]
+
     if size is not None:
         match size:
             case 176:
@@ -66,19 +71,29 @@ def construct_from_edge(edge_list, param, online=False, POP_ratio=1, size=None):
     ## 1. Inter-satellite links
     if params.ism == ISM.ISL:
         for i, e in enumerate(edge_list):
-            if i < 16943:
+            if i < 16944:
                 G.add_edge(e[0], e[1], capacity=params.isl_cap/POP_ratio)
-            else :
-                if random.random() < 0.325 and online:
+            elif i < ISLIndex[0]:
+                if random.random() < ISLRatio[0] / ISLLength[0] and online:
+                    G.add_edge(e[0], e[1], capacity=0)
+                else:
+                    G.add_edge(e[0], e[1], capacity=params.isl_cap/POP_ratio)
+            elif i < ISLIndex[1]:
+                if random.random() < ISLRatio[1] / ISLLength[1] and online:
+                    G.add_edge(e[0], e[1], capacity=0)
+                else:
+                    G.add_edge(e[0], e[1], capacity=params.isl_cap/POP_ratio)
+            else:
+                if random.random() < ISLRatio[2] / ISLLength[2] and online:
                     G.add_edge(e[0], e[1], capacity=0)
                 else:
                     G.add_edge(e[0], e[1], capacity=params.isl_cap/POP_ratio)
     else:
         for i, e in enumerate(edge_list):
-            if i < 16943:
+            if i < 16944:
                 G.add_edge(e[0], e[1], capacity=params.isl_cap/POP_ratio)
             else :
-                if random.random() < 0.675 and online:
+                if random.random() < GrdRatio and online:
                     G.add_edge(e[0], e[1], capacity=0)
                 else:
                     G.add_edge(e[0], e[1], capacity=params.isl_cap/POP_ratio)

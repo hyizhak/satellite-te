@@ -91,9 +91,7 @@ class PathFormulation(AbstractFormulation):
 
     def __init__(
         self,
-        
-        problem_path,
-        topo_idx,
+        data,
         objective,
         path_num,
         edge_disjoint=True,
@@ -109,8 +107,7 @@ class PathFormulation(AbstractFormulation):
                     dist_metric
                 )
             )
-        self.problem_path = problem_path
-        self.topo_idx = topo_idx
+        self.data = data
         self.path_num = path_num
         self.edge_disjoint = edge_disjoint
         self.dist_metric = dist_metric
@@ -205,16 +202,8 @@ class PathFormulation(AbstractFormulation):
         return AssetManager.pathform_path(problem_path, topo_idx, num_path, edge_disjoint, dist_metric)
 
     @staticmethod
-    def compute_paths(problem_path, topo_idx, path_num, edge_disjoint, dist_metric):
-        paths_dict = {}
-        G = AssetManager.load_graph(problem_path, topo_idx)
-        for s_k in G.nodes:
-            for t_k in G.nodes:
-                if s_k == t_k:
-                    continue
-                paths = find_paths(G, s_k, t_k, path_num, edge_disjoint)
-                paths_no_cycles = [remove_cycles(path) for path in paths]
-                paths_dict[(s_k, t_k)] = paths_no_cycles
+    def compute_paths(data, path_num, edge_disjoint):
+        paths_dict = data['path']
         return paths_dict
 
     @staticmethod
@@ -241,8 +230,8 @@ class PathFormulation(AbstractFormulation):
 
     def get_paths(self):
         if not hasattr(self, "_paths_dict"):
-            self._paths_dict = PathFormulation.read_paths_from_disk_or_compute(
-                self.problem_path, self.topo_idx, self.path_num, self.edge_disjoint, self.dist_metric
+            self._paths_dict = PathFormulation.compute_paths(
+                self.data, self.path_num, self.edge_disjoint
             )
         return self._paths_dict
 
@@ -272,7 +261,7 @@ class PathFormulation(AbstractFormulation):
         paths_dict = self.get_paths()
         path_i = 0
         for k, (s_k, t_k, d_k) in self.commodity_list:
-            paths = paths_dict[(s_k, t_k)]
+            paths = paths_dict[f"{s_k}, {t_k}"]
             path_ids = []
             for path in paths:
                 self._all_paths.append(path)

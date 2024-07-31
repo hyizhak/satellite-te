@@ -7,22 +7,31 @@ import dgl.nn as dglnn
 import dgl.function as fn
 
 from .utils import weight_initialization
+from .edgegatv2conv import EdgeGATv2Conv
 
 class TopoGNN(nn.Module): 
 
-    def __init__(self, dytop_env, gnn_type):
+    def __init__(self, dytop_env, gnn_type, layers):
         super(TopoGNN, self).__init__()
-        self.edge_gat_1 = dglnn.EdgeGATConv(
+        self.edge_gat_1 = EdgeGATv2Conv(
             in_feats=1,
             edge_feats=1,
             out_feats=16,
             num_heads=2,)
-        self.edge_gat_2 = dglnn.EdgeGATConv(
+        self.edge_gat_hidden = nn.ModuleList()
+        if layers > 0:
+            for i in range(layers):
+                self.edge_gat_hidden.append(EdgeGATv2Conv(
+                    in_feats=16,
+                    edge_feats=1,
+                    out_feats=16,
+                    num_heads=2,))
+        self.edge_gat_2 = EdgeGATv2Conv(
             in_feats=16,
             edge_feats=1,
             out_feats=8,
             num_heads=2,)
-        self.edge_feature = nn.Linear(16, 1)
+        self.edge_feature = nn.Linear(16, 16)
 
     def forward(self, G, efeatures):
 
@@ -50,6 +59,12 @@ class TopoGNN(nn.Module):
         x = torch.sum(x, 1)
 
         x = F.relu(x)
+
+        if len(self.edge_gat_hidden) > 0:
+            for layer in self.edge_gat_hidden:
+                x = layer(G, x, efeatures)
+                x = torch.sum(x, 1)
+                x = F.relu(x)
 
         x = self.edge_gat_2(G, x, efeatures)
 
