@@ -234,7 +234,7 @@ class SaTEEnv(object):
 
         action = self.transform_raw_action(raw_action)
 
-        labels = self.train_label[self.idx]
+        labels = self.train_label[self.idx].to(self.device)
 
         # Adding a small value epsilon to avoid zeros in the labels
         epsilon = 1e-10
@@ -248,6 +248,9 @@ class SaTEEnv(object):
 
         # Compute KL divergence
         loss = F.kl_div(log_output, labels, reduction='batchmean')
+        loss.requires_grad_(True)
+
+        self._next_obs()
 
         return loss
 
@@ -277,7 +280,7 @@ class SaTEEnv(object):
         raw_action = raw_action.exp()
         raw_action = raw_action/(1+raw_action.sum(axis=-1)[:, None])
 
-        if self.supervised:
+        if self.supervised and self.mode == 'train':
             return raw_action
 
         # translate split ratio to flow
@@ -569,8 +572,10 @@ class SaTEEnv(object):
         #             flow_values.append(tm[i][j])
 
         # sort the traffic matrix by src, dst
+        filtered_tm = {k: v for k, v in data['tm'].items() if k.split(', ')[0] != k.split(', ')[1]}
+
         sorted_tm = sorted(
-            data['tm'].items(),
+            filtered_tm.items(),
             key=lambda item: (int(item[0].split(', ')[0]), int(item[0].split(', ')[1]))
         )
 
@@ -667,8 +672,8 @@ class SaTEEnv(object):
 
         G = dgl.heterograph(data_dict=graph_data, num_nodes_dict=num_nodes_dict)
 
-        G.nodes['flow'].data['x'] = torch.Tensor(flow_values).to(self.device)
-        G.nodes['path'].data['x'] = torch.Tensor(path_values).to(self.device)
+        G.nodes['flow'].data['x'] = torch.Tensor(flow_values).unsqueeze(1).to(self.device)
+        G.nodes['path'].data['x'] = torch.Tensor(path_values).unsqueeze(1).to(self.device)
 
         return G
     

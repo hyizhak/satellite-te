@@ -137,7 +137,7 @@ class AlloGNN(nn.Module):
 
         # Node embedding update
         for ntype in graph.ntypes:
-            graph.nodes[ntype].data["x"] = F.relu(self.projector[ntype](graph.nodes[ntype].data["x"].reshape(-1, self.in_sizes[ntype])))
+            graph.nodes[ntype].data["x"] = F.leaky_relu(self.projector[ntype](graph.nodes[ntype].data["x"]))
 
         # Iterate over the cascaded layers
         for conv_key, conv_dict in self.full_graph_conv.items():
@@ -172,7 +172,7 @@ class AlloGNN(nn.Module):
             # Update each node simultaneously
             for node_key, embedding in embeddings.items():
                 # embedding = nn.LayerNorm(embedding.size()).to(embedding.device)(embedding)
-                graph.nodes[node_key].data["x"] = F.relu(embedding)
+                graph.nodes[node_key].data["x"] = F.leaky_relu(embedding)
 
             # x = graph.nodes[self.category].data["x"]
             # x = self.path_encoder(x)
@@ -192,7 +192,7 @@ class AlloGNN(nn.Module):
         else:
             x = self.decoder_1(x)
             x = self.dropout_1(x)
-            x = F.relu(x)
+            x = F.leaky_relu(x)
         
         x = self.decoder_2(x)
         x = self.dropout_2(x)

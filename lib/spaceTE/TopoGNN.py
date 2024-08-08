@@ -31,7 +31,7 @@ class TopoGNN(nn.Module):
             edge_feats=1,
             out_feats=8,
             num_heads=2,)
-        self.edge_feature = nn.Linear(16, 1)
+        self.edge_feature = nn.Linear(16, 16)
 
     def forward(self, G, efeatures):
 
@@ -62,13 +62,13 @@ class TopoGNN(nn.Module):
         # (N, H, O) -> (N, O)
         x = torch.sum(x, 1)
 
-        x = F.relu(x)
+        x = F.leaky_relu(x)
 
         if len(self.edge_gat_hidden) > 0:
             for layer in self.edge_gat_hidden:
                 x = layer(G, x, efeatures)
                 x = torch.sum(x, 1)
-                x = F.relu(x)
+                x = F.leaky_relu(x)
 
         x = self.edge_gat_2(G, x, efeatures)
 
@@ -84,7 +84,7 @@ class TopoGNN(nn.Module):
             # edges.src['feat'] and edges.dst['feat'] are the features of source and destination nodes
             # return {'edge_feat': (edges.src['feat'] * edges.dst['feat']) ** 0.5}
             concatenated_features = torch.cat([edges.src['feat'], edges.dst['feat']], dim=1) 
-            edge_features = F.relu(self.edge_feature(concatenated_features))
+            edge_features = F.leaky_relu(self.edge_feature(concatenated_features))
             return {'edge_feat': edge_features}
 
         # Apply the function to all edges in the graph
