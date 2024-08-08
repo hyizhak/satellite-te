@@ -17,7 +17,7 @@ from .utils import print_
 
 
 class SaTE():
-    def __init__(self, sate_env, sate_actor, lr, early_stop):
+    def __init__(self, sate_env, sate_actor, lr, supervised, early_stop):
         """Initialize SaTE model.
 
         Args:
@@ -32,6 +32,8 @@ class SaTE():
 
         # init optimizer
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr)
+
+        self.supervised = supervised
 
         # early stop when val result no longer changes
         self.early_stop = early_stop
@@ -63,12 +65,18 @@ class SaTE():
 
                     # get observation
                     obs = self.env.get_obs()
-                    # get action
-                    raw_action, log_probability = self.actor.evaluate(obs)
-                    # get reward
-                    reward, info = self.env.step(
-                        raw_action, num_sample=num_sample)
-                    loss += -(log_probability*reward).mean()
+                    if self.supervised:
+                        # get action
+                        raw_action, _ = self.actor.evaluate(obs, deterministic=True)
+                        # get loss
+                        loss += self.env.compute_loss(raw_action)
+                    else:
+                        # get action
+                        raw_action, log_probability = self.actor.evaluate(obs)
+                        # get reward
+                        reward, info = self.env.step(
+                            raw_action, num_sample=num_sample)
+                        loss += -(log_probability*reward).mean()
 
                 self.actor_optimizer.zero_grad()
                 loss.backward()
@@ -107,7 +115,7 @@ class SaTE():
         self.val_reward.append(
             rewards/(self.env.idx_stop - self.env.idx_start))
 
-    def test(self, num_admm_step, output_header, output_placeholder, output_csv):
+    def test(self, num_admm_step, output_header, output_placeholder, output_csv, admm_test):
         """Test SaTE model.
 
         Args:
@@ -137,15 +145,20 @@ class SaTE():
                 raw_action = self.actor.act(obs)
                 runtime = time.time() - start_time
                 # get reward
-                reward, info = self.env.step(
-                    raw_action, num_admm_step=num_admm_step)
+                if admm_test:
+                    pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
+                    reward, info = self.env.step(
+                        pseudo_action, num_admm_step=num_admm_step)
+                else:
+                    reward, info = self.env.step(
+                        raw_action, num_admm_step=num_admm_step)
                 # add runtime in transforming, ADMM, rounding
                 runtime += info['runtime']
                 runtime_list.append(runtime)
                 # show satisfied demand instead of total flow
                 obj_list.append(
                     reward.item()/problem_dict['total_demand']
-                    if self.env.obj == 'total_flow' else reward.item())
+                    if self.env.obj.endswith('total_flow') else reward.item())
 
                 # display avg runtime, obj
                 # loop_obj.set_postfix({
@@ -153,7 +166,7 @@ class SaTE():
                 #     'obj': '%.4f' % (sum(obj_list)/len(obj_list)),
                 #     })
 
-                assert problem_dict['obj'] == 'total_flow'
+                assert problem_dict['obj'].endswith('total_flow')
 
                 result_line = output_placeholder.format(
                     problem_dict['topo_idx'],

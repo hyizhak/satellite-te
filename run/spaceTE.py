@@ -11,6 +11,8 @@ import re
 
 from _common import *
 from pathlib import Path
+import random
+import numpy as np
 
 from lib.spaceTE import SaTEEnv, SaTEActor, SaTE
 from lib.data.starlink.orbit_params import OrbitParams
@@ -25,10 +27,14 @@ ARG_TEST = False
 
 
 def benchmark(args):
+
+    set_seed(42)
     
     obj, problem_path = args.obj, args.problem_path
     
-    train, test = args.train, args.test
+    train, test, admm_test, supervised = args.train, args.test, args.admm_test, args.supervised
+
+    print(f'Running SaTE with train={train}, supervised={supervised}, test={test}, admm_test={admm_test}')
     
     device = torch.device(
         f"cuda:{args.devid}" if torch.cuda.is_available() else "cpu")
@@ -64,6 +70,7 @@ def benchmark(args):
     topo_gnn = args.topo_gnn
     rho = args.rho
     layers = args.layers
+    decoder_type = args.decoder
     # training hyper-parameters
     lr = args.lr
     early_stop = args.early_stop
@@ -82,11 +89,13 @@ def benchmark(args):
     # ========== init SaTE env, actor, mode
     
     train_id = _sate_train_id(
-        topo_num = topo_num, train_sz=trainval_tm_per_topo, val_ratio=val_ratio,
-        lr=lr, epoches=epoch_num, batch_sz=batch_size,
-        coma_sample=sample_num, layers=layers,
-        rho=rho, admm_step=admm_step_num
+        obj=obj, train_sz=trainval_tm_per_topo, val_ratio=val_ratio,
+        lr=lr, epoches=epoch_num, batch_sz=batch_size, supervised=supervised,
+        coma_sample=sample_num, layers=layers, decoder=decoder_type,
+        rho=rho, admm_step=admm_step_num,
     )
+
+    params = None
 
     path = Path(problem_path)
 
@@ -138,35 +147,16 @@ def benchmark(args):
 
                 print(f'Loading Starlink data for intensity {intensity}')
 
-                with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_A.pkl'), 'rb') as file:
-                    data_part1 = pickle.load(file)
+                with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_B.pkl'), 'rb') as file:
+                    dataset = pickle.load(file)
 
-                dataset = data_part1
+                if supervised:
+                    sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-1000_solutions.pkl')
+                    label = read_solutions(sol_dir)
+                    dataset = dataset[:len(label)]
 
+                    dataset = (dataset, label)
 
-            sate_env = SaTEEnv(
-                obj=obj,
-                problem_path=problem_path,
-                num_path=path_num,
-                edge_disjoint=edge_disjoint,
-                dist_metric=dist_metric,
-                rho=rho,
-                work_dir=work_dir,
-                dataset=dataset,
-                num_failure=num_failure,
-                orbit_params=params,
-                device=device)
-            sate_actor = SaTEActor(
-                sate_env=sate_env,
-                topo_gnn=topo_gnn,
-                layers=layers,
-                train_id=train_id,
-                device=device)
-            sate = SaTE(
-                sate_env=sate_env,
-                sate_actor=sate_actor,
-                lr=lr,
-                early_stop=early_stop)
             
         else:
 
@@ -214,29 +204,11 @@ def benchmark(args):
             with open(os.path.join(problem_path, f'StarLink_DataSetForAgent100_5000_Size{size}.pkl'), 'rb') as file:
                 dataset = pickle.load(file)
 
-            sate_env = SaTEEnv(
-                obj=obj,
-                problem_path=problem_path,
-                num_path=path_num,
-                edge_disjoint=edge_disjoint,
-                dist_metric=dist_metric,
-                rho=rho,
-                work_dir=work_dir,
-                dataset=dataset,
-                num_failure=num_failure,
-                orbit_params=params,
-                device=device)
-            sate_actor = SaTEActor(
-                sate_env=sate_env,
-                topo_gnn=topo_gnn,
-                layers=layers,
-                train_id=train_id,
-                device=device)
-            sate = SaTE(
-                sate_env=sate_env,
-                sate_actor=sate_actor,
-                lr=lr,
-                early_stop=early_stop)
+            if supervised:
+                with open(os.path.join(SOLUTION_PATH, f'Gurobi_size-{size}_mode-{path.parts[-1]}_intensity-100_volume-1000_solutions.pkl'), 'rb') as file:
+                    label = pickle.load(file)
+
+                dataset = (dataset, label)
 
     else:
 
@@ -249,28 +221,33 @@ def benchmark(args):
         with open(os.path.join(problem_path, f'Iridium_DataSetForAgent_{intensity}_60480.pkl'), 'rb') as file:
             dataset = pickle.load(file)
 
-        sate_env = SaTEEnv(
-            obj=obj,
-            problem_path=problem_path,
-            num_path=path_num,
-            edge_disjoint=edge_disjoint,
-            dist_metric=dist_metric,
-            rho=rho,
-            work_dir=work_dir,
-            dataset=dataset,
-            num_failure=num_failure,
-            device=device)
-        sate_actor = SaTEActor(
-            sate_env=sate_env,
-            topo_gnn=topo_gnn,
-            layers=layers,
-            train_id=train_id,
-            device=device)
-        sate = SaTE(
-            sate_env=sate_env,
-            sate_actor=sate_actor,
-            lr=lr,
-            early_stop=early_stop)
+
+    sate_env = SaTEEnv(
+        obj=obj,
+        problem_path=problem_path,
+        num_path=path_num,
+        edge_disjoint=edge_disjoint,
+        dist_metric=dist_metric,
+        rho=rho,
+        work_dir=work_dir,
+        dataset=dataset,
+        supervised=supervised,
+        orbit_params=params,
+        num_failure=num_failure,
+        device=device)
+    sate_actor = SaTEActor(
+        sate_env=sate_env,
+        topo_gnn=topo_gnn,
+        layers=layers,
+        decoder_type=decoder_type,
+        train_id=train_id,
+        device=device)
+    sate = SaTE(
+        sate_env=sate_env,
+        sate_actor=sate_actor,
+        lr=lr,
+        supervised=supervised,
+        early_stop=early_stop)
 
         
 
@@ -336,7 +313,7 @@ def benchmark(args):
         
     # ========== test  
     if test:
-        test_id = train_id + f'_quantized-{quantized}_compiled-{compiled}_failures-{num_failure}'
+        test_id = train_id + f'step-{admm_step_num}_failures-{num_failure}_admm-test-{admm_test}'
         test_log_dir = AssetManager.test_log_dir(work_dir, create_dir=True)
         output_csv = os.path.join(test_log_dir, f'{test_id}.csv')
 
@@ -350,20 +327,29 @@ def benchmark(args):
             output_header=TEST_HEADERS,
             output_placeholder=TEST_PLACEHOLDER,
             output_csv=output_csv,
+            admm_test=admm_test
         )
 
     return
 
 
 def _sate_train_id(
-        topo_num, train_sz, val_ratio,    # training data set
-        lr, epoches, batch_sz,  # training hyperparams
-        coma_sample, layers,             # RL hyperparams
+        obj, train_sz, val_ratio,    # training data set
+        lr, epoches, batch_sz, supervised, # training hyperparams
+        coma_sample, layers, decoder,            # hyperparams
         rho, admm_step):        # ADMM hyperparams
-    return f'spaceTE_topo-{topo_num}_tsz-{train_sz}_vr-{val_ratio}_' + \
-    f'lr-{lr}_ep-{epoches}_bsz-{batch_sz}_' + \
-    f'sample-{coma_sample}_' + f'layers-{layers}_' + \
-    f'rho-{rho}_step-{admm_step}'
+    train_mode = 'supervised' if supervised else 'RL'
+    return f'spaceTE_obj-{obj}_{train_mode}' + \
+    f'ep-{epoches}_' + \
+    f'sample-{coma_sample}_' + f'layers-{layers}_' + f'decoder-{decoder}'
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
     
     
 if __name__ == '__main__':
@@ -380,6 +366,10 @@ if __name__ == '__main__':
 
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--test", action="store_true")
+
+    parser.add_argument("--admm-test", action="store_true")
+
+    parser.add_argument("--supervised", action="store_true")
     
     # output parameters
     parser.add_argument("--output-dir", type=str, default=ARG_OUTPUT_DIR)
@@ -401,12 +391,13 @@ if __name__ == '__main__':
     parser.add_argument('--topo-gnn', type=str, default="EdgeGAT", help='type of Topology GNN layer')
     parser.add_argument('--rho', type=float, default=1.0, help='rho in ADMM')
     parser.add_argument('--layers', type=int, default=0, help='number of hidden layers in Topolohy GNN')
+    parser.add_argument('--decoder', type=str, default="linear", help='type of decoder')
 
     # training hyper-parameters
     parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
-    parser.add_argument('--epochs', type=int, default=3, help='number of training epochs')
+    parser.add_argument('--epochs', type=int, default=1, help='number of training epochs')
     parser.add_argument('--bsz', type=int, default=32, help='batch size')
-    parser.add_argument('--samples', type=int, default=5, help='number of COMA samples')
+    parser.add_argument('--samples', type=int, default=200, help='number of COMA samples')
     parser.add_argument('--admm-steps', type=int, default=5, help='number of ADMM steps')
     parser.add_argument('--early-stop', type=bool, default=False, help='whether to stop early')
 

@@ -1,11 +1,13 @@
 import os
 import sys
+import pickle
 
 _ROOT = f'{os.path.dirname(__file__)}/..'
 
 # ========== Benchmarking arguments
 # Input and output
 ARG_PROBLEM_PATH = f'{_ROOT}/input/IridiumDataSet14day20sec_Int5'
+SOLUTION_PATH = f'/data/projects/11003765/sate/input/lp_solutions'
 ARG_TOPO_NUM = 10
 ARG_OUTPUT_DIR = f'{_ROOT}/output'
 ARG_OUTPUT_PREFIX = None
@@ -14,7 +16,7 @@ ARG_PATH_NUM = 5
 ARG_EDGE_DISJOINT = False
 ARG_DIST_METIRC = "min-hop"
 
-ARG_OBJ = "total_flow"
+ARG_OBJ = "teal_total_flow"
 ARG_SCALE_FACTOR = 1.0
 
 ARG_TEST_TM_PER_TOPO = None
@@ -43,7 +45,7 @@ logging.basicConfig(
     datefmt="%d/%b/%Y %H:%M:%S",
 )
 
-OBJ_STRS = ["total_flow", "min_max_link_util"]
+OBJ_STRS = ["teal_total_flow", "rounded_total_flow", "total_flow", "teal_min_max_link_util"]
 SCALE_FACTORS = [1.0]
 
 def update_output_path(args, model):
@@ -52,3 +54,16 @@ def update_output_path(args, model):
         problem_basename = os.path.basename(args.problem_path)
         args.output_prefix = f'{parent_basename}_{problem_basename}_{model}'
     args.work_dir = os.path.join(args.output_dir, args.output_prefix)
+
+def read_solutions(file_path):
+    solutions = []
+    with open(file_path, 'rb') as f:
+        while True:
+            try:
+                # Load each solution sequentially
+                sol = pickle.load(f)
+                solutions.append(sol)
+            except EOFError:
+                # End of file reached
+                break
+    return solutions

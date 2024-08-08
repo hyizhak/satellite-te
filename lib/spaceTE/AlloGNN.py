@@ -12,6 +12,7 @@ class AlloGNN(nn.Module):
         hidden_size,
         out_sizes,
         num_heads,
+        decoder,
         canonical_etypes,
         dropout=0.05,
     ):
@@ -51,6 +52,8 @@ class AlloGNN(nn.Module):
         self.projector = torch.nn.ModuleDict()
         for type, in_size in in_sizes.items():
             self.projector[type] = torch.nn.Linear(in_size, hidden_size)
+            
+        # self.path_encoder = nn.TransformerEncoderLayer(d_model=hidden_size, nhead=num_heads, dropout=dropout)
 
         # Initialize graph convolutions (cascaded style)
         self.full_graph_conv = torch.nn.ModuleDict()
@@ -88,15 +91,22 @@ class AlloGNN(nn.Module):
                 self.full_graph_conv[which_graph_conv][str(edge)] = ResidualEdgeGATConv(
                     in_feats=hidden_size, out_feats=hidden_size, num_heads=num_heads)
                 
-        print(self.full_graph_conv)
-
         # Initialize decoder
-        self.decoder_1 = torch.nn.Linear(
-            in_features=hidden_size*3, out_features=hidden_size)
-        self.dropout_1 = torch.nn.Dropout(p=dropout)
-        self.decoder_2 = torch.nn.Linear(
-            in_features=hidden_size, out_features=self.out_size)
-        self.dropout_2 = torch.nn.Dropout(p=dropout)
+        if decoder == "linear":
+            self.decoder_1 = torch.nn.Linear(
+                in_features=hidden_size*3, out_features=hidden_size)
+            self.dropout_1 = torch.nn.Dropout(p=dropout)
+            self.decoder_2 = torch.nn.Linear(
+                in_features=hidden_size, out_features=self.out_size)
+            self.dropout_2 = torch.nn.Dropout(p=dropout)
+        elif decoder == 'transformer':
+            self.decoder_1 = nn.TransformerEncoderLayer(d_model=hidden_size*3, nhead=num_heads, dropout=dropout)
+            self.transformer_encoder = nn.TransformerEncoder(self.decoder_1, num_layers=1)
+            self.decoder_2 = torch.nn.Linear(
+                in_features=hidden_size*3, out_features=self.out_size)
+            self.dropout_2 = torch.nn.Dropout(p=dropout)
+        else:
+            raise ValueError("Unsupported decoder type: {}".format(decoder))
 
     def forward(self, graph, e2p_feature):
         """Forward pass of the model.
@@ -164,6 +174,10 @@ class AlloGNN(nn.Module):
                 # embedding = nn.LayerNorm(embedding.size()).to(embedding.device)(embedding)
                 graph.nodes[node_key].data["x"] = F.relu(embedding)
 
+            # x = graph.nodes[self.category].data["x"]
+            # x = self.path_encoder(x)
+            # graph.nodes[self.category].data["x"] = x
+            
             # Residual values
             if conv_key == "conv_1":
                 x_res1 = graph.nodes[self.category].data["x"]
@@ -173,10 +187,14 @@ class AlloGNN(nn.Module):
         # Decoder
         x = graph.nodes[self.category].data["x"]
         x = torch.cat([x, x_res1, x_res2], dim=-1)
-        x = self.dropout_1(x)
-        x = self.decoder_1(x)
-        x = F.relu(x)
-        x = self.dropout_2(x)
+        if hasattr(self, 'transformer_encoder'):
+            x = self.transformer_encoder(x)
+        else:
+            x = self.decoder_1(x)
+            x = self.dropout_1(x)
+            x = F.relu(x)
+        
         x = self.decoder_2(x)
+        x = self.dropout_2(x)
         
         return x

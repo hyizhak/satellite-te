@@ -25,7 +25,7 @@ from .utils import weight_initialization, print_
 class SaTEActor(nn.Module):
 
     def __init__(
-            self, sate_env, topo_gnn, layers,
+            self, sate_env, topo_gnn, layers, decoder_type,
             train_id, device,
             std=1, log_std_min=-10.0, log_std_max=10.0):
         """Initialize SaTE actor.
@@ -60,10 +60,10 @@ class SaTEActor(nn.Module):
         problem_G_sample = self.env.obs["problem"]
         in_sizes = {'flow': 1,
                     'path': 1,
-                    'link': 16}
+                    'link': 1}
         
         self.AlloGNN = AlloGNN(self.env, in_sizes=in_sizes , hidden_size=128, 
-                               out_sizes={'path':1}, num_heads=4, 
+                               out_sizes={'path':1}, num_heads=4, decoder=decoder_type,
                                canonical_etypes=problem_G_sample.canonical_etypes).to(self.device)
 
         # init COMA policy

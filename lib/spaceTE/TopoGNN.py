@@ -14,7 +14,7 @@ class TopoGNN(nn.Module):
     def __init__(self, dytop_env, gnn_type, layers):
         super(TopoGNN, self).__init__()
         self.edge_gat_1 = EdgeGATv2Conv(
-            in_feats=1,
+            in_feats=3,
             edge_feats=1,
             out_feats=16,
             num_heads=2,)
@@ -31,7 +31,7 @@ class TopoGNN(nn.Module):
             edge_feats=1,
             out_feats=8,
             num_heads=2,)
-        self.edge_feature = nn.Linear(16, 16)
+        self.edge_feature = nn.Linear(16, 1)
 
     def forward(self, G, efeatures):
 
@@ -53,6 +53,10 @@ class TopoGNN(nn.Module):
         G.update_all(fn.copy_e('temp', 'm'), fn.sum('m', 'sum_cap'))
 
         nfeatures = torch.unsqueeze(G.ndata['sum_cap'], 1)
+
+        traffic_features = torch.stack([G.ndata['in_traffic'], G.ndata['out_traffic']], dim=1)
+
+        nfeatures = torch.cat([nfeatures, traffic_features], dim=1)  # (num_nodes, 3)
 
         x = self.edge_gat_1(G, nfeatures, efeatures)
         # (N, H, O) -> (N, O)

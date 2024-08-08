@@ -18,6 +18,7 @@ import torch_scatter
 import torch.nn as nn
 from torch.distributions.normal import Normal
 from torch.distributions.uniform import Uniform
+import torch.nn.functional as F
 from lib.data.starlink.user_node import generate_sat2user
 from lib.data.starlink.orbit_params import OrbitParams
 
@@ -32,7 +33,7 @@ class SaTEEnv(object):
             self, obj, problem_path,
             num_path, edge_disjoint, dist_metric, rho,
             num_failure, device,
-            work_dir, dataset,
+            work_dir, dataset, supervised,
             orbit_params=None,
             raw_action_min=-10.0, raw_action_max=10.0):
         """Initialize SaTE environment.
@@ -65,6 +66,8 @@ class SaTEEnv(object):
         self.num_failure = num_failure
         self.device = device
 
+        self.supervised = supervised
+
         # # init matrices related to topology
         # self.G = self._read_graph_json(topo)
         # self.capacity = torch.FloatTensor(
@@ -87,7 +90,10 @@ class SaTEEnv(object):
         self.raw_action_max = raw_action_max
         
         # prepare the dataset
-        self.train_dataset, self.test_dataset = train_test_split(dataset, test_size=0.2, random_state=42)
+        if self.supervised:
+            self.train_dataset, self.test_dataset, self.train_label, self.test_label = train_test_split(dataset[0], dataset[1], test_size=0.2, random_state=42)
+        else:
+            self.train_dataset, self.test_dataset = train_test_split(dataset, test_size=0.2, random_state=42)
 
         self.mode = None
         self.reset('train')
@@ -146,15 +152,17 @@ class SaTEEnv(object):
         src_tensor = torch.tensor(src, dtype=torch.int64)
         dst_tensor = torch.tensor(dst, dtype=torch.int64)
         self.capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
-        
-
+    
         # Create a DGLGraph
         self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
-
         # Add edge data (capacity)
         self.G_dgl.edata['capacity'] = self.capacities_tensor
 
         problem_G = self.create_heterograph(data)
+
+        # Add node data
+        self.G_dgl.ndata['in_traffic'] = self.in_traffic
+        self.G_dgl.ndata['out_traffic'] = self.out_traffic    
         
         # remove demands within nodes and 0 demands
         tm = torch.FloatTensor(self.flow_values).flatten().to(self.device)
@@ -207,7 +215,7 @@ class SaTEEnv(object):
         else:
             start_time = time.time()
             action = self.transform_raw_action(raw_action)
-            if self.obj == 'total_flow':
+            if self.obj.endswith('total_flow'):
                 # total flow require no constraint violation
                 obs = torch.concat([self.obs['capacity'], self.obs['traffic']]).to(self.device)
                 action = self.ADMM.tune_action(obs, action, num_admm_step)
@@ -219,11 +227,35 @@ class SaTEEnv(object):
         # next observation
         self._next_obs()
         return reward, info
+    
+    def compute_loss(self, raw_action):
+        
+        assert self.supervised and self.mode == 'train'
+
+        action = self.transform_raw_action(raw_action)
+
+        labels = self.train_label[self.idx]
+
+        # Adding a small value epsilon to avoid zeros in the labels
+        epsilon = 1e-10
+        labels = labels + epsilon
+
+        # Renormalize to ensure the distributions still sum to 1
+        labels = labels / labels.sum(dim=1, keepdim=True)
+
+        # Compute the log of the model's output probabilities
+        log_output = action.log()
+
+        # Compute KL divergence
+        loss = F.kl_div(log_output, labels, reduction='batchmean')
+
+        return loss
+
 
     def get_obj(self, action):
         """Return objective."""
 
-        if self.obj == 'total_flow':
+        if self.obj.endswith('total_flow'):
             return action.sum(axis=-1)
         elif self.obj == 'min_max_link_util':
             return (torch_scatter.scatter(
@@ -244,6 +276,9 @@ class SaTEEnv(object):
         # 1 in softmax represent unallocated traffic
         raw_action = raw_action.exp()
         raw_action = raw_action/(1+raw_action.sum(axis=-1)[:, None])
+
+        if self.supervised:
+            return raw_action
 
         # translate split ratio to flow
         raw_action = raw_action.flatten() * self.obs['traffic']
@@ -321,6 +356,10 @@ class SaTEEnv(object):
         '''
 
         path_flow = self.transform_raw_action(raw_action)
+
+        if self.obj == 'rounded_total_flow':
+            path_flow = self.round_action(path_flow)
+
         edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)
         util = edge_flow/self.obs['capacity']
 
@@ -330,7 +369,7 @@ class SaTEEnv(object):
             torch.ones(raw_action.shape).to(self.device)*self.raw_action_max)
         reward = torch.zeros(self.num_path_node//self.num_path).to(self.device)
 
-        if self.obj == 'total_flow':
+        if self.obj == 'teal_total_flow' or self.obj == 'rounded_total_flow':
 
             # find bottlenack edge for each path
             util, path_bottleneck = torch_scatter.scatter_max(
@@ -371,7 +410,7 @@ class SaTEEnv(object):
                 delta_util = torch.sparse.mm(delta_path_flow, bottleneck_p2e)
                 reward += torch.sparse.mm(delta_util, coef).flatten()
 
-        elif self.obj == 'min_max_link_util':
+        elif self.obj == 'teal_min_max_link_util':
 
             # find link with max utilization
             max_util_edge = util.argmax()
@@ -395,8 +434,13 @@ class SaTEEnv(object):
                     [self.num_path_node//self.num_path, self.num_path_node])
                 reward += torch.sparse.mm(
                     delta_path_flow, max_util_paths.reshape(-1, 1)).flatten()
+        
+        elif self.obj == 'total_flow':
+            reward = path_flow.sum(axis=-1)
+            penalty = edge_flow - self.obs['capacity']
+            reward -= penalty.relu().sum()
 
-        return reward/num_sample
+        return reward if self.obj == 'total_flow' else reward/num_sample 
 
     def read_graph(self, topo):
         """Return network topo from json file."""
@@ -462,54 +506,54 @@ class SaTEEnv(object):
                 path_dict[(s_k, t_k)] = path_dict[(s_k, t_k)][:self.num_path]
         return path_dict
 
-    def get_topo_matrix(self, topo, num_path, edge_disjoint, dist_metric):
-        """
-        Return matrices related to topology.
-        edge_index, edge_index_values: index and value for matrix
-        D^(-0.5)*(adjacent)*D^(-0.5) without self-loop
-        p2e: [path_node_idx, edge_nodes_inx]
-        """
+    # def get_topo_matrix(self, topo, num_path, edge_disjoint, dist_metric):
+    #     """
+    #     Return matrices related to topology.
+    #     edge_index, edge_index_values: index and value for matrix
+    #     D^(-0.5)*(adjacent)*D^(-0.5) without self-loop
+    #     p2e: [path_node_idx, edge_nodes_inx]
+    #     """
 
-        # get regular path dict
-        path_dict = self.get_regular_path(
-            topo, num_path, edge_disjoint, dist_metric)
+    #     # get regular path dict
+    #     path_dict = self.get_regular_path(
+    #         topo, num_path, edge_disjoint, dist_metric)
         
-        self.paths = path_dict
+    #     self.paths = path_dict
 
-        # edge nodes' degree, index lookup
-        edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
-        node2degree_dict = {}
-        edge_num = len(self.G.edges)
+    #     # edge nodes' degree, index lookup
+    #     edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
+    #     node2degree_dict = {}
+    #     edge_num = len(self.G.edges)
 
-        # build edge_index
-        src, dst, path_i = [], [], 0
-        for s in range(len(self.G)):
-            for t in range(len(self.G)):
-                if s == t:
-                    continue
-                for path in path_dict[(s, t)]:
-                    for (u, v) in zip(path[:-1], path[1:]):
-                        src.append(edge_num+path_i)
-                        dst.append(edge2idx_dict[(u, v)])
+    #     # build edge_index
+    #     src, dst, path_i = [], [], 0
+    #     for s in range(len(self.G)):
+    #         for t in range(len(self.G)):
+    #             if s == t:
+    #                 continue
+    #             for path in path_dict[(s, t)]:
+    #                 for (u, v) in zip(path[:-1], path[1:]):
+    #                     src.append(edge_num+path_i)
+    #                     dst.append(edge2idx_dict[(u, v)])
 
-                        if src[-1] not in node2degree_dict:
-                            node2degree_dict[src[-1]] = 0
-                        node2degree_dict[src[-1]] += 1
-                        if dst[-1] not in node2degree_dict:
-                            node2degree_dict[dst[-1]] = 0
-                        node2degree_dict[dst[-1]] += 1
-                    path_i += 1
+    #                     if src[-1] not in node2degree_dict:
+    #                         node2degree_dict[src[-1]] = 0
+    #                     node2degree_dict[src[-1]] += 1
+    #                     if dst[-1] not in node2degree_dict:
+    #                         node2degree_dict[dst[-1]] = 0
+    #                     node2degree_dict[dst[-1]] += 1
+    #                 path_i += 1
 
-        # edge_index is D^(-0.5)*(adj)*D^(-0.5) without self-loop
-        edge_index_values = torch.tensor(
-            [1/math.sqrt(node2degree_dict[u]*node2degree_dict[v])
-                for u, v in zip(src+dst, dst+src)]).to(self.device)
-        edge_index = torch.tensor(
-            [src+dst, dst+src], dtype=torch.long).to(self.device)
-        p2e = torch.tensor([src, dst], dtype=torch.long).to(self.device)
-        p2e[0] -= len(self.G.edges)
+    #     # edge_index is D^(-0.5)*(adj)*D^(-0.5) without self-loop
+    #     edge_index_values = torch.tensor(
+    #         [1/math.sqrt(node2degree_dict[u]*node2degree_dict[v])
+    #             for u, v in zip(src+dst, dst+src)]).to(self.device)
+    #     edge_index = torch.tensor(
+    #         [src+dst, dst+src], dtype=torch.long).to(self.device)
+    #     p2e = torch.tensor([src, dst], dtype=torch.long).to(self.device)
+    #     p2e[0] -= len(self.G.edges)
 
-        return edge_index, edge_index_values, p2e
+    #     return edge_index, edge_index_values, p2e
     
     def create_heterograph(self, data):
 
@@ -524,10 +568,26 @@ class SaTEEnv(object):
         #             dst.append(j)
         #             flow_values.append(tm[i][j])
 
-        src = [int(key.split(', ')[0]) for key in data['tm'].keys()]
-        dst = [int(key.split(', ')[1]) for key in data['tm'].keys()]
-        flow_values = list(data['tm'].values())
+        # sort the traffic matrix by src, dst
+        sorted_tm = sorted(
+            data['tm'].items(),
+            key=lambda item: (int(item[0].split(', ')[0]), int(item[0].split(', ')[1]))
+        )
+
+        # Extract src, dst, and flow_values
+        src = [int(key.split(', ')[0]) for key, _ in sorted_tm]
+        dst = [int(key.split(', ')[1]) for key, _ in sorted_tm]
+        flow_values = [value for _, value in sorted_tm]
         self.flow_values = flow_values
+
+        num_nodes = self.G_dgl.num_nodes()
+        self.in_traffic = torch.zeros(num_nodes).to(self.device)
+        self.out_traffic = torch.zeros(num_nodes).to(self.device)
+
+        # Accumulate traffic
+        for s, d, flow in zip(src, dst, flow_values):
+            self.out_traffic[s] += flow
+            self.in_traffic[d] += flow
 
         # src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
         # flow_values = tm[src, dst]
