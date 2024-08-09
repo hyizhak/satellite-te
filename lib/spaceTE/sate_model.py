@@ -49,6 +49,8 @@ class SaTE():
             num_sample: number of samples in COMA reward
         """
 
+        self.losses = []
+
         for epoch in range(num_epoch):
 
             self.env.reset('train')
@@ -60,6 +62,7 @@ class SaTE():
 
             for idx in loop_obj:
                 loss = 0
+                self.actor_optimizer.zero_grad()
                 for _ in idx:
                     torch.cuda.empty_cache()
 
@@ -78,7 +81,7 @@ class SaTE():
                             raw_action, num_sample=num_sample)
                         loss += -(log_probability*reward).mean()
 
-                self.actor_optimizer.zero_grad()
+                self.losses.append(loss.item()/len(idx))
                 loss.backward()
                 self.actor_optimizer.step()
                 # break
@@ -149,6 +152,9 @@ class SaTE():
                     pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
                     reward, info = self.env.step(
                         pseudo_action, num_admm_step=num_admm_step)
+                    # label = self.env.get_label()
+                    # reward, info = self.env.step(
+                    #     label, num_admm_step=num_admm_step)
                 else:
                     reward, info = self.env.step(
                         raw_action, num_admm_step=num_admm_step)
@@ -183,7 +189,7 @@ class SaTE():
             print(f'runtime: {runtime_avg:.4f}, obj: {obj_avg:.4f}')
 
     def save_model(self):
-        self.actor.save_model()
+        self.actor.save_model(self.losses)
 
     def load_model(self, quantized, compiled, model_path=None):
         self.actor.load_model(quantized, model_path)

@@ -339,8 +339,8 @@ def _sate_train_id(
         coma_sample, layers, decoder,            # hyperparams
         rho, admm_step):        # ADMM hyperparams
     train_mode = 'supervised' if supervised else 'RL'
-    return f'spaceTE_obj-{obj}_{train_mode}' + \
-    f'ep-{epoches}_' + \
+    return f'spaceTE_obj-{obj}_{train_mode}_' + \
+    f'lr-{lr}_ep-{epoches}_' + \
     f'sample-{coma_sample}_' + f'layers-{layers}_' + f'decoder-{decoder}'
 
 def set_seed(seed):

@@ -9,7 +9,7 @@
 # Resource requests:
 #PBS -l select=1:ngpus=1
 # Walltime (maximum run time):
-#PBS -l walltime=12:30:00
+#PBS -l walltime=48:30:00
 # Project code:
 #PBS -P 11003765
 

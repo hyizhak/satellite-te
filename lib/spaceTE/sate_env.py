@@ -164,7 +164,7 @@ class SaTEEnv(object):
         self.G_dgl.ndata['in_traffic'] = self.in_traffic
         self.G_dgl.ndata['out_traffic'] = self.out_traffic    
         
-        # remove demands within nodes and 0 demands
+        # demands to be allocated
         tm = torch.FloatTensor(self.flow_values).flatten().to(self.device)
         tm = torch.repeat_interleave(tm, self.num_path)
         # obs = torch.concat([self.capacity, tm]).to(self.device)
@@ -215,6 +215,7 @@ class SaTEEnv(object):
         else:
             start_time = time.time()
             action = self.transform_raw_action(raw_action)
+            # action = raw_action.flatten() * self.obs['traffic']
             if self.obj.endswith('total_flow'):
                 # total flow require no constraint violation
                 obs = torch.concat([self.obs['capacity'], self.obs['traffic']]).to(self.device)
@@ -228,13 +229,19 @@ class SaTEEnv(object):
         self._next_obs()
         return reward, info
     
+    def get_label(self):
+        if self.supervised and self.mode == 'train':
+            return self.train_label[self.idx].to(self.device)
+        if self.supervised and self.mode == 'test':
+            return self.test_label[self.idx].to(self.device)
+    
     def compute_loss(self, raw_action):
         
         assert self.supervised and self.mode == 'train'
 
         action = self.transform_raw_action(raw_action)
 
-        labels = self.train_label[self.idx].to(self.device)
+        labels = self.get_label()
 
         # Adding a small value epsilon to avoid zeros in the labels
         epsilon = 1e-10
@@ -290,7 +297,7 @@ class SaTEEnv(object):
 
     def round_action(
             self, action, round_demand=True, round_capacity=True,
-            num_round_iter=2):
+            num_round_iter=20):
         """Return rounded action.
         Action can still violate constraints even after ADMM fine-tuning.
         This function rounds the action through cutting flow.
@@ -322,7 +329,8 @@ class SaTEEnv(object):
                 edge_flow = torch_scatter.scatter(
                     path_flow[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)
                 # util of each edge
-                util = 1 + (edge_flow/capacity-1).relu()
+                util = 1 + (edge_flow/capacity - 1).relu()
+                # util = edge_flow/capacity
                 # propotionally cut path flow by max util
                 util = torch_scatter.scatter(
                     util[self.p2e[1]], self.p2e[0], reduce="max")
@@ -691,10 +699,10 @@ class SaTEEnv(object):
             G.add_nodes_from(range(params.graph_node_num))
             ## 1. Inter-satellite links
             for e in edge_list:
-                if (e[0] == e[1]) :
+                if (e[0] == e[1]):
                     continue
                 if random.random() < self.num_failure:
-                    G.add_edge(e[0], e[1], capacity=0)
+                    G.add_edge(e[0], e[1], capacity=0.0001)
                 else:
                     G.add_edge(e[0], e[1], capacity=params.isl_cap)
                 # G.add_edge(e[1], e[0], capacity=params.isl_cap)
@@ -704,13 +712,13 @@ class SaTEEnv(object):
                 G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
                 # Downlink
                 G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
-            ## 3. Inter ground station links
-            for i in range(params.GrdStationNum):
-                for j in range(params.GrdStationNum):
-                    if i == j:
-                        continue
-                    G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
-                    G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+            # ## 3. Inter ground station links
+            # for i in range(params.GrdStationNum):
+            #     for j in range(params.GrdStationNum):
+            #         if i == j:
+            #             continue
+            #         G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
+            #         G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
             
             # print(G.number_of_nodes(), G.number_of_edges())
             # print(len(G))

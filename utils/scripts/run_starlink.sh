@@ -113,22 +113,24 @@ python ${SPACETE_SCRIPT} \
     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
     --output-dir ${OUTPUT_DIR}/supervised \
     --topo-num ${RUN_TOPO_NUM} \
-    --train --test --supervised
+    --train --test --supervised --epochs 5 --lr 0.0001 --admm-steps 0
 
-# for admm_steps in 0 5 10 15; do
-#     echo -e "\n\n\n Testing with admm_steps: $admm_steps"
-#     python ${SPACETE_SCRIPT} \
-#         --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
-#         --output-dir ${OUTPUT_DIR} \
-#         --topo-num ${RUN_TOPO_NUM} \
-#         --test --admm-test --admm-steps ${admm_steps} --obj total_flow
-    
-#     python ${SPACETE_SCRIPT} \
-#         --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
-#         --output-dir ${OUTPUT_DIR} \
-#         --topo-num ${RUN_TOPO_NUM} \
-#         --test --admm-steps ${admm_steps} --obj total_flow
-# done
+for admm_steps in 0 5 10 15; do
+    echo -e "\n\n\n Testing with admm_steps: $admm_steps"
+    python ${SPACETE_SCRIPT} \
+        --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+        --output-dir ${OUTPUT_DIR}/supervised \
+        --topo-num ${RUN_TOPO_NUM} \
+        --test --admm-test --admm-steps ${admm_steps} --supervised \
+        --epochs 5 --lr 0.0001
+
+    python ${SPACETE_SCRIPT} \
+        --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+        --output-dir ${OUTPUT_DIR}/supervised \
+        --topo-num ${RUN_TOPO_NUM} \
+        --test --admm-steps ${admm_steps} --supervised \
+        --epochs 5 --lr 0.0001
+done
 
 # for problem in DataSetForSaTE100; do
 #     for mode in ISL; do

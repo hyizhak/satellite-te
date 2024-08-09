@@ -109,11 +109,14 @@ class SaTEActor(nn.Module):
             logging.info(f'Loading spaceTE model from {mpath}')
             self.load_state_dict(torch.load(mpath, map_location=self.device))
 
-    def save_model(self):
+    def save_model(self, losses):
         """Save from model fname."""
         mpath = self.model_path(True)
         logging.info(f'Saving spaceTE model to {mpath}')
         torch.save(self.state_dict(), mpath)
+        with open(mpath.replace('.pt', '.losses'), 'w') as f:
+            for loss in losses:
+                f.write(f'{loss}\n')
 
     def model_path(self, create_dir=False):
         """Return full name of the ML model."""
@@ -203,14 +206,14 @@ class SaTEActor(nn.Module):
         # test mode
         if deterministic:
             distribution = None
-            raw_action = mean.detach()
+            raw_action = mean
             log_probability = None
         # train mode
         else:
             # use normal distribution for action
             distribution = Normal(mean, std)
             sample = distribution.rsample()
-            raw_action = sample.detach()
+            raw_action = sample
             log_probability = distribution.log_prob(raw_action).sum(axis=-1)
 
         return raw_action, log_probability
