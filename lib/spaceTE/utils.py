@@ -3,6 +3,8 @@ from contextlib import contextmanager
 
 import torch
 import torch.nn as nn
+import numpy as np
+import pandas as pd
 
 
 def weight_initialization(module):
@@ -25,3 +27,16 @@ def print_(*args, file=None):
         file = sys.stdout
     print(*args, file=file)
     file.flush()
+
+def smoothing(y, window_size=100):
+    ns = pd.Series(y)
+
+    # Apply rolling window smoothing with window size 100
+    windows = ns.rolling(window=window_size)
+    moving_averages = windows.mean()
+
+    # Convert the result to a list and remove the NaN values
+    ys = moving_averages.tolist()
+    ys = ys[window_size-1:]  # Removing the first NaN values
+
+    return ys

@@ -5,11 +5,11 @@
 #PBS -j oe
 #PBS -o run_SaTE.log
 # Queue name:
-#PBS -q normal
+#PBS -q ai
 # Resource requests:
 #PBS -l select=1:ngpus=1
 # Walltime (maximum run time):
-#PBS -l walltime=48:30:00
+#PBS -l walltime=23:30:00
 # Project code:
 #PBS -P 11003765
 
@@ -22,4 +22,4 @@ cd $PBS_O_WORKDIR
 nvidia-smi
 
 # Run the Singularity run script
-./run_in_singularity.sh run_starlink.sh
+./run_in_singularity.sh run_test.sh

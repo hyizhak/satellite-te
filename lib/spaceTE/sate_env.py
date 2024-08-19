@@ -4,6 +4,7 @@ import os
 import math
 import time
 import random
+import copy
 import numpy as np
 import networkx as nx
 from itertools import product
@@ -31,11 +32,12 @@ class SaTEEnv(object):
 
     def __init__(
             self, obj, problem_path,
-            num_path, edge_disjoint, dist_metric, rho,
+            num_path, dummy_path, edge_disjoint, dist_metric, rho,
             num_failure, device,
-            work_dir, dataset, supervised,
+            work_dir, dataset, supervised, penalized,
+            flow_lambda,
             orbit_params=None,
-            raw_action_min=-10.0, raw_action_max=10.0):
+            raw_action_min=-5.0, raw_action_max=5.0):
         """Initialize SaTE environment.
 
         Args:
@@ -58,6 +60,7 @@ class SaTEEnv(object):
         self.orbit_params = orbit_params
         self.problem_path = problem_path
         self.num_path = num_path
+        self.dummy_path = dummy_path
         self.edge_disjoint = edge_disjoint
         self.dist_metric = dist_metric
         
@@ -67,6 +70,8 @@ class SaTEEnv(object):
         self.device = device
 
         self.supervised = supervised
+        self.penalized = penalized
+        self.flow_lambda = flow_lambda
 
         # # init matrices related to topology
         # self.G = self._read_graph_json(topo)
@@ -124,6 +129,21 @@ class SaTEEnv(object):
         # {'graph': E, 'tm': tm_dict, 'path': path_dict, 'data_idx': data_idx}
         data = self.dataset[self.idx]
 
+        # sort the traffic matrix by src, dst
+        filtered_tm = {k: v for k, v in data['tm'].items() if k.split(', ')[0] != k.split(', ')[1]}
+
+        sorted_tm = sorted(
+            filtered_tm.items(),
+            key=lambda item: (int(item[0].split(', ')[0]), int(item[0].split(', ')[1]))
+        )
+
+        # Extract src, dst, and flow_values
+        src = [int(key.split(', ')[0]) for key, _ in sorted_tm]
+        dst = [int(key.split(', ')[1]) for key, _ in sorted_tm]
+        flow_values = [value for _, value in sorted_tm]
+        self.src, self.dst = src, dst
+        self.flow_values = flow_values
+
         # init matrices related to topology
         self.G = self.construct_from_edge(data['graph'])
         # self.capacity = torch.FloatTensor(
@@ -151,12 +171,20 @@ class SaTEEnv(object):
         # Convert to PyTorch tensors
         src_tensor = torch.tensor(src, dtype=torch.int64)
         dst_tensor = torch.tensor(dst, dtype=torch.int64)
-        self.capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)
+        self.capacities_tensor = torch.tensor(capacities, dtype=torch.float32).to(self.device)            
     
         # Create a DGLGraph
         self.G_dgl = dgl.graph((src_tensor, dst_tensor)).to(self.device)
         # Add edge data (capacity)
         self.G_dgl.edata['capacity'] = self.capacities_tensor
+
+        num_nodes = self.G_dgl.num_nodes()
+        self.in_traffic = torch.zeros(num_nodes).to(self.device)
+        self.out_traffic = torch.zeros(num_nodes).to(self.device)
+        # Accumulate traffic
+        for s, d, flow in zip(self.src, self.dst, self.flow_values):
+            self.out_traffic[s] += flow
+            self.in_traffic[d] += flow
 
         problem_G = self.create_heterograph(data)
 
@@ -166,7 +194,22 @@ class SaTEEnv(object):
         
         # demands to be allocated
         tm = torch.FloatTensor(self.flow_values).flatten().to(self.device)
-        tm = torch.repeat_interleave(tm, self.num_path)
+        admm_tm = torch.repeat_interleave(tm, self.num_path)
+        if self.dummy_path:
+            tm = torch.repeat_interleave(tm, self.num_path+1)
+        else:
+            tm = torch.repeat_interleave(tm, self.num_path)
+
+        if self.mode == 'test':
+            
+            self.init_ADMM(data)
+
+            _, _, admm_capacities = zip(*[(u, v, edata['capacity']) 
+                                    for u, v, edata in self.G_admm.edges(data=True)])
+            admm_capacities_tensor = torch.tensor(admm_capacities, dtype=torch.float32).to(self.device)
+
+            self.admm_obs = torch.concat([admm_capacities_tensor, admm_tm]).to(self.device)
+
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
                "capacity": self.capacities_tensor,
@@ -196,7 +239,7 @@ class SaTEEnv(object):
             'num_path': self.num_path,
             'edge_disjoint': self.edge_disjoint,
             'dist_metric': self.dist_metric,
-            'total_demand': self.obs['traffic'][::self.num_path].sum().item(),
+            'total_demand': sum(self.flow_values),
         }
         return problem_dict
 
@@ -215,11 +258,27 @@ class SaTEEnv(object):
         else:
             start_time = time.time()
             action = self.transform_raw_action(raw_action)
+            # # add one column in the front if action is for 5 paths
+            # if raw_action.shape[1] != self.num_path:
+            #     raw_action = torch.cat(
+            #         [torch.zeros(raw_action.shape[0], 1).to(self.device), raw_action],
+            #         dim=1)
             # action = raw_action.flatten() * self.obs['traffic']
             if self.obj.endswith('total_flow'):
                 # total flow require no constraint violation
-                obs = torch.concat([self.obs['capacity'], self.obs['traffic']]).to(self.device)
-                action = self.ADMM.tune_action(obs, action, num_admm_step)
+                # remove first column of action
+                if self.dummy_path:
+                    action = action.reshape(-1, self.num_path+1)
+                    action = action[:, 1:]
+                    action = action.flatten()
+                action = self.ADMM.tune_action(self.admm_obs, action, num_admm_step)
+                # add back the first column (0s)
+                if self.dummy_path:
+                    action = action.reshape(-1, self.num_path)
+                    action = torch.cat(
+                        [torch.zeros(action.shape[0], 1).to(self.device), action],
+                        dim=1)
+                    action = action.flatten()
                 action = self.round_action(action)
             info['runtime'] = time.time() - start_time
             info['sol_mat'] = self.extract_sol_mat(action)
@@ -237,29 +296,57 @@ class SaTEEnv(object):
     
     def compute_loss(self, raw_action):
         
-        assert self.supervised and self.mode == 'train'
+        assert self.mode == 'train'
 
         action = self.transform_raw_action(raw_action)
 
-        labels = self.get_label()
+        if self.supervised:
 
-        # Adding a small value epsilon to avoid zeros in the labels
-        epsilon = 1e-10
-        labels = labels + epsilon
+            if self.dummy_path:
+                action_sliced = action[:, 1:]
+            else:
+                action_sliced = action
 
-        # Renormalize to ensure the distributions still sum to 1
-        labels = labels / labels.sum(dim=1, keepdim=True)
+            labels = self.get_label()
 
-        # Compute the log of the model's output probabilities
-        log_output = action.log()
+            # Adding a small value epsilon to avoid zeros in the labels
+            epsilon = 1e-10
+            labels = labels + epsilon
 
-        # Compute KL divergence
-        loss = F.kl_div(log_output, labels, reduction='batchmean')
-        loss.requires_grad_(True)
+            # Renormalize to ensure the distributions still sum to 1
+            labels = labels / labels.sum(dim=1, keepdim=True)
+
+            # Compute the log of the model's output probabilities
+            log_output = action_sliced.log()
+
+            # Compute KL divergence
+            kl_div_loss = F.kl_div(log_output, labels, reduction='batchmean')
+            kl_div_loss.requires_grad_(True)
+
+        action_ef = action.flatten() * self.obs['traffic']
+
+        edge_flow = torch_scatter.scatter(action_ef[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)
+        penalty = (edge_flow - self.obs['capacity']).relu()
+        penalty_mult = torch.exp(torch.min(penalty / self.obs['capacity'], 4. * torch.ones(penalty.size(), device=self.device)))
+
+        if self.dummy_path:
+            action_zerod = action.clone()
+            action_zerod[:, 0] = 0.
+            action_ef = action_zerod.flatten() * self.obs['traffic']
+
+        total_demand = sum(self.flow_values)
+
+        rounded_action = self.round_action(action_ef, num_round_iter=20)
 
         self._next_obs()
 
-        return loss
+        if self.supervised:
+            if self.penalized:
+                return [rounded_action.sum() / total_demand, kl_div_loss, penalty.mean()], kl_div_loss + (-self.flow_lambda * action_ef.sum() + (penalty_mult * penalty).sum()) / (0.25 * self.flow_lambda * total_demand)
+            else: 
+                return [rounded_action.sum() / total_demand, action_ef.sum(), penalty.mean()], kl_div_loss
+        else:
+            return [rounded_action.sum() / total_demand, action_ef.sum(), penalty.mean()], -self.flow_lambda * action_ef.sum() + (penalty_mult * penalty).sum()
 
 
     def get_obj(self, action):
@@ -285,9 +372,9 @@ class SaTEEnv(object):
         # translate ML output to split ratio through softmax
         # 1 in softmax represent unallocated traffic
         raw_action = raw_action.exp()
-        raw_action = raw_action/(1+raw_action.sum(axis=-1)[:, None])
+        raw_action = raw_action / raw_action.sum(axis=-1)[:, None]
 
-        if self.supervised and self.mode == 'train':
+        if (self.supervised or self.penalized) and self.mode == 'train':
             return raw_action
 
         # translate split ratio to flow
@@ -309,12 +396,20 @@ class SaTEEnv(object):
             num_round_iter: number of rounds when iteratively cutting flow
         """
 
-        demand = self.obs['traffic'][::self.num_path]
+        if self.dummy_path:
+            demand = self.obs['traffic'][::self.num_path+1]
+        else:
+            demand = self.obs['traffic'][::self.num_path]
+
         capacity = self.obs['capacity']
 
         # reduce action proportionally if action exceed demand
         if round_demand:
-            action = action.reshape(-1, self.num_path)
+            if self.dummy_path:
+                action = action.reshape(-1, self.num_path+1)
+                action[:,0] = 0.
+            else:
+                action = action.reshape(-1, self.num_path)
             ratio = action.sum(-1) / demand
             action[ratio > 1, :] /= ratio[ratio > 1, None]
             action = action.flatten()
@@ -367,6 +462,7 @@ class SaTEEnv(object):
         '''
 
         path_flow = self.transform_raw_action(raw_action)
+        num_path = self.num_path + 1 if self.dummy_path else self.num_path
 
         if self.obj == 'rounded_total_flow':
             path_flow = self.round_action(path_flow)
@@ -378,7 +474,7 @@ class SaTEEnv(object):
         distribution = Uniform(
             torch.ones(raw_action.shape).to(self.device)*self.raw_action_min,
             torch.ones(raw_action.shape).to(self.device)*self.raw_action_max)
-        reward = torch.zeros(self.num_path_node//self.num_path).to(self.device)
+        reward = torch.zeros(self.num_path_node//num_path).to(self.device)
 
         if self.obj == 'teal_total_flow' or self.obj == 'rounded_total_flow':
 
@@ -405,16 +501,16 @@ class SaTEEnv(object):
                 # add -delta_path_flow if util < 1 else -delta_path_flow/util
                 delta_path_flow = self.transform_raw_action(sample) - path_flow
                 reward += -(delta_path_flow/(1+(util-1).relu()))\
-                    .reshape(-1, self.num_path).sum(-1)
+                    .reshape(-1, num_path).sum(-1)
 
                 # add path_flow/util^2*delta_util for each path
                 delta_path_flow = torch.sparse_coo_tensor(
                     torch.stack(
-                        [torch.arange(self.num_path_node//self.num_path)
-                            .to(self.device).repeat_interleave(self.num_path),
+                        [torch.arange(self.num_path_node//num_path)
+                            .to(self.device).repeat_interleave(num_path),
                             torch.arange(self.num_path_node).to(self.device)]),
                     delta_path_flow,
-                    [self.num_path_node//self.num_path, self.num_path_node])
+                    [self.num_path_node//num_path, self.num_path_node])
                 # get utilization changes on edge
                 # do not use torch_sparse.spspmm()
                 # "an illegal memory access was encountered" in large topology
@@ -438,11 +534,11 @@ class SaTEEnv(object):
                 delta_path_flow = self.transform_raw_action(sample) - path_flow
                 delta_path_flow = torch.sparse_coo_tensor(
                     torch.stack(
-                        [torch.arange(self.num_path_node//self.num_path)
-                            .to(self.device).repeat_interleave(self.num_path),
+                        [torch.arange(self.num_path_node//num_path)
+                            .to(self.device).repeat_interleave(num_path),
                             torch.arange(self.num_path_node).to(self.device)]),
                     delta_path_flow,
-                    [self.num_path_node//self.num_path, self.num_path_node])
+                    [self.num_path_node//num_path, self.num_path_node])
                 reward += torch.sparse.mm(
                     delta_path_flow, max_util_paths.reshape(-1, 1)).flatten()
         
@@ -565,8 +661,51 @@ class SaTEEnv(object):
     #     p2e[0] -= len(self.G.edges)
 
     #     return edge_index, edge_index_values, p2e
-    
+
+    def init_ADMM(self, data):
+        
+        paths = data['path']
+        # edge nodes' degree, index lookup
+        edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G_admm.edges)}
+        edge_num = len(self.G_admm.edges)
+
+        flow_count = 0
+        src_list, dst_list = [], []
+
+        num_path_node = (self.num_path) * len(self.flow_values)
+        for (src, dst) in zip(self.src, self.dst):
+            configured_paths = paths.get(f'{src}, {dst}', [])
+            index = flow_count * (self.num_path)
+            flow_count += 1
+
+            for i, path in enumerate(configured_paths):
+                path_i = index + i
+
+                for (u, v) in zip(path[:-1], path[1:]):
+                    src_list.append(edge_num+path_i)
+                    dst_list.append(edge2idx_dict[(u, v)])
+
+        p2e = torch.tensor([src_list, dst_list], dtype=torch.long).to(self.device)
+        p2e[0] -= edge_num
+
+        self.ADMM = ADMM(
+                p2e, self.num_path, num_path_node,
+                edge_num, self.rho, self.device)
+            
     def create_heterograph(self, data):
+
+        self.num_path_node = self.num_path * len(self.flow_values) 
+        num_path = self.num_path
+
+        paths = copy.deepcopy(data['path'])
+
+        if self.dummy_path:
+            for k,v in paths.items():
+                src = int(k.split(', ')[0])
+                tgt = int(k.split(', ')[1])
+                v.insert(0, [src, tgt])
+            self.num_path_node += len(self.flow_values)
+            num_path += 1
 
         # # Initialize lists to store source, destination, and flow values
         # src, dst, flow_values = [], [], []
@@ -579,39 +718,12 @@ class SaTEEnv(object):
         #             dst.append(j)
         #             flow_values.append(tm[i][j])
 
-        # sort the traffic matrix by src, dst
-        filtered_tm = {k: v for k, v in data['tm'].items() if k.split(', ')[0] != k.split(', ')[1]}
-
-        sorted_tm = sorted(
-            filtered_tm.items(),
-            key=lambda item: (int(item[0].split(', ')[0]), int(item[0].split(', ')[1]))
-        )
-
-        # Extract src, dst, and flow_values
-        src = [int(key.split(', ')[0]) for key, _ in sorted_tm]
-        dst = [int(key.split(', ')[1]) for key, _ in sorted_tm]
-        flow_values = [value for _, value in sorted_tm]
-        self.flow_values = flow_values
-
-        num_nodes = self.G_dgl.num_nodes()
-        self.in_traffic = torch.zeros(num_nodes).to(self.device)
-        self.out_traffic = torch.zeros(num_nodes).to(self.device)
-
-        # Accumulate traffic
-        for s, d, flow in zip(src, dst, flow_values):
-            self.out_traffic[s] += flow
-            self.in_traffic[d] += flow
-
         # src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
         # flow_values = tm[src, dst]
         # self.flow_values = flow_values
 
-        self.num_path_node = self.num_path * len(flow_values)
         # self.edge_index, self.edge_index_values, self.p2e = \
-        #         self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric)
-        
-        paths = data['path']
-        self.paths = paths
+        #         self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric
 
         # edge nodes' degree, index lookup
         edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
@@ -623,13 +735,13 @@ class SaTEEnv(object):
         src_list, dst_list = [], []
 
         path_values = [0] * self.num_path_node
-        for (src, dst) in zip(src, dst):
+        for (src, dst) in zip(self.src, self.dst):
             configured_paths = paths.get(f'{src}, {dst}', [])
             flow_use_path[0] += [flow_count] * len(configured_paths)
             # index = self.num_path * ((self.G.number_of_nodes() - 1) * src + dst) if src > dst \
             #     else self.num_path * ((self.G.number_of_nodes() - 1) * src + dst - 1)
-            index = flow_count * self.num_path
-            flow_use_path[1] += list(range(index, index + self.num_path))
+            index = flow_count * num_path
+            flow_use_path[1] += list(range(index, index + num_path))
             flow_count += 1
 
             for i, path in enumerate(configured_paths):
@@ -659,10 +771,6 @@ class SaTEEnv(object):
         e2p = torch.tensor([dst_list, src_list], dtype=torch.long).to(self.device)
         e2p[1] -= edge_num
 
-        self.ADMM = ADMM(
-                self.p2e, self.num_path, self.num_path_node,
-                self.num_edge_node, self.rho, self.device)
-
         flow_use_path = tuple(torch.tensor(sublist).to(self.device) for sublist in flow_use_path)
 
         link_constitute_path = tuple(e2p)
@@ -672,7 +780,7 @@ class SaTEEnv(object):
             ('link', 'constitutes', 'path'): link_constitute_path,
             }
         
-        num_nodes_dict = {'flow': len(flow_values), 
+        num_nodes_dict = {'flow': len(self.flow_values), 
                       'path': self.num_path_node,
                       'link': self.num_edge_node}
         
@@ -680,7 +788,7 @@ class SaTEEnv(object):
 
         G = dgl.heterograph(data_dict=graph_data, num_nodes_dict=num_nodes_dict)
 
-        G.nodes['flow'].data['x'] = torch.Tensor(flow_values).unsqueeze(1).to(self.device)
+        G.nodes['flow'].data['x'] = torch.Tensor(self.flow_values).unsqueeze(1).to(self.device)
         G.nodes['path'].data['x'] = torch.Tensor(path_values).unsqueeze(1).to(self.device)
 
         return G
@@ -712,6 +820,12 @@ class SaTEEnv(object):
                 G.add_edge(sat2user(i), i, capacity=params.uplink_cap)
                 # Downlink
                 G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
+
+            self.G_admm = copy.deepcopy(G)
+
+            if self.dummy_path:
+                for s, d, flow in zip(self.src, self.dst, self.flow_values):
+                    G.add_edge(s, d, capacity = flow)
             # ## 3. Inter ground station links
             # for i in range(params.GrdStationNum):
             #     for j in range(params.GrdStationNum):
@@ -732,6 +846,13 @@ class SaTEEnv(object):
             for i in range(66):
                 G.add_edge(i, i+66, capacity=100)
                 G.add_edge(i+66, i, capacity=100)
+
+            self.G_admm = copy.deepcopy(G)
+
+            if self.dummy_path:
+                for s, d, flow in zip(self.src, self.dst, self.flow_values):
+                    G.add_edge(s, d, capacity = flow)
+
             return G
 
 
@@ -741,18 +862,19 @@ class SaTEEnv(object):
         The i, j entry represents the traffic flow from demand i on edge j.
         """
 
+        num_path = self.num_path + 1 if self.dummy_path else self.num_path
         # 3D sparse matrix to represent which path, which demand, which edge
         sol_mat_index = torch.stack([
-            self.p2e[0] % self.num_path,
-            torch.div(self.p2e[0], self.num_path, rounding_mode='floor'),
+            self.p2e[0] % num_path,
+            torch.div(self.p2e[0], num_path, rounding_mode='floor'),
             self.p2e[1]])
 
         # merge allocation from different paths of the same demand
         sol_mat = torch.sparse_coo_tensor(
             sol_mat_index,
             action[self.p2e[0]],
-            (self.num_path,
-                self.num_path_node//self.num_path,
+            (num_path,
+                self.num_path_node//num_path,
                 self.num_edge_node))
         sol_mat = torch.sparse.sum(sol_mat, [0])
 

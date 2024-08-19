@@ -10,14 +10,15 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
 
 from .sate_actor import SaTEActor
 from .sate_env import SaTEEnv
-from .utils import print_
+from .utils import print_, smoothing
 
 
 class SaTE():
-    def __init__(self, sate_env, sate_actor, lr, supervised, early_stop):
+    def __init__(self, sate_env, sate_actor, lr, supervised, penalized, early_stop):
         """Initialize SaTE model.
 
         Args:
@@ -34,6 +35,7 @@ class SaTE():
         self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=lr)
 
         self.supervised = supervised
+        self.penalized = penalized
 
         # early stop when val result no longer changes
         self.early_stop = early_stop
@@ -50,6 +52,8 @@ class SaTE():
         """
 
         self.losses = []
+        best_loss = float('inf')
+        early_stop_count = 0
 
         for epoch in range(num_epoch):
 
@@ -61,18 +65,22 @@ class SaTE():
                 desc=f"Training epoch {epoch+1}/{num_epoch}: ", position=0, mininterval=600)
 
             for idx in loop_obj:
-                loss = 0
+                satisfied_ratio, total_flow, panelty, loss = 0, 0, 0, 0
                 self.actor_optimizer.zero_grad()
                 for _ in idx:
                     torch.cuda.empty_cache()
 
                     # get observation
                     obs = self.env.get_obs()
-                    if self.supervised:
+                    if self.supervised or self.penalized:
                         # get action
                         raw_action, _ = self.actor.evaluate(obs, deterministic=True)
                         # get loss
-                        loss += self.env.compute_loss(raw_action)
+                        split_loss, batch_loss = self.env.compute_loss(raw_action)
+                        satisfied_ratio += split_loss[0]
+                        total_flow += split_loss[1]
+                        panelty += split_loss[2]
+                        loss += batch_loss
                     else:
                         # get action
                         raw_action, log_probability = self.actor.evaluate(obs)
@@ -81,10 +89,14 @@ class SaTE():
                             raw_action, num_sample=num_sample)
                         loss += -(log_probability*reward).mean()
 
-                self.losses.append(loss.item()/len(idx))
                 loss.backward()
                 self.actor_optimizer.step()
-                # break
+                loss_list = [satisfied_ratio.item(), total_flow.item(), panelty.item(), loss.item()]
+                    
+                self.losses.append([x / len(idx) for x in loss_list])
+
+            self.draw_loss()
+            self.save_model()
 
             # early stop
             if self.early_stop:
@@ -93,8 +105,6 @@ class SaTE():
                         sum(self.val_reward[-20:-10])/10
                         - sum(self.val_reward[-10:])/10) < 0.0001:
                     break
-        if save_model:
-            self.save_model()
 
     def val(self):
         """Validating SaTE model."""
@@ -149,12 +159,12 @@ class SaTE():
                 runtime = time.time() - start_time
                 # get reward
                 if admm_test:
-                    pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
-                    reward, info = self.env.step(
-                        pseudo_action, num_admm_step=num_admm_step)
-                    # label = self.env.get_label()
+                    # pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
                     # reward, info = self.env.step(
-                    #     label, num_admm_step=num_admm_step)
+                    #     pseudo_action, num_admm_step=num_admm_step)
+                    label = self.env.get_label()
+                    reward, info = self.env.step(
+                        label, num_admm_step=num_admm_step)
                 else:
                     reward, info = self.env.step(
                         raw_action, num_admm_step=num_admm_step)
@@ -187,6 +197,63 @@ class SaTE():
             runtime_avg = sum(runtime_list) / len(runtime_list)
             obj_avg = sum(obj_list) / len(obj_list)
             print(f'runtime: {runtime_avg:.4f}, obj: {obj_avg:.4f}')
+
+    def draw_loss(self, smoothing_window=1000):
+        kl_divergence, total_flow, penalty, loss = zip(*self.losses)
+        steps = range(1, len(self.losses) + 1)
+        fig, axs = plt.subplots(2, 2, figsize=(10, 8))
+        # set title to os.path.basename(model_path)
+        plt.suptitle(os.path.basename(self.actor.model_path()).replace('.pt', ''))
+
+        if len(steps) > smoothing_window:
+            kl_divergence = smoothing(kl_divergence, smoothing_window)
+            total_flow = smoothing(total_flow, smoothing_window)
+            penalty = smoothing(penalty, smoothing_window)
+            loss = smoothing(loss, smoothing_window)
+            steps = range(smoothing_window, len(loss) + smoothing_window)
+
+        axs[0, 0].plot(steps, kl_divergence)
+        axs[0, 0].set_title('Satisfied Ratio')
+        axs[0, 0].set_xlabel('Steps')
+        axs[0, 0].set_ylabel('Satisfied Ratio')
+        
+
+        axs[0, 1].plot(steps, total_flow)
+        if self.supervised and self.penalized:
+            axs[0, 1].set_title('KL Divergence')
+            axs[0, 1].set_ylabel('KL Divergence')
+        else:
+            axs[0, 1].set_title('Total Flow')
+            axs[0, 1].set_ylabel('Total Flow')
+        axs[0, 1].set_xlabel('Steps')
+
+        axs[1, 0].plot(steps, penalty)
+        axs[1, 0].set_title('Penalty')
+        axs[1, 0].set_xlabel('Steps')
+        axs[1, 0].set_ylabel('Penalty')
+
+        axs[1, 1].plot(steps, loss)
+        if self.supervised:
+            if self.penalized:
+                axs[1, 1].set_title('Combined Loss')
+                axs[1, 1].set_ylabel('Combined Loss')
+            else:
+                axs[1, 1].set_title('KL Divergence')
+                axs[1, 1].set_ylabel('KL Divergence')
+        else:
+            axs[1, 1].set_title('Penalized Optimization Loss')
+            axs[1, 1].set_ylabel('Penalized Optimization Loss')
+        axs[1, 1].set_xlabel('Steps')
+
+        plt.tight_layout()
+        model_path = self.actor.model_path(create_dir=True)
+        model_dir = os.path.dirname(model_path)
+        train_log_path = os.path.join(os.path.dirname(model_dir), 'train_logs')
+        model_name = os.path.basename(model_path).replace('.pt', '_figure')
+        model_folder_path = os.path.join(train_log_path, model_name)
+        os.makedirs(model_folder_path, exist_ok=True)
+        figure_path = os.path.join(model_folder_path, f'steps-{len(self.losses)}_losses.png')
+        plt.savefig(figure_path)
 
     def save_model(self):
         self.actor.save_model(self.losses)

@@ -114,9 +114,10 @@ class SaTEActor(nn.Module):
         mpath = self.model_path(True)
         logging.info(f'Saving spaceTE model to {mpath}')
         torch.save(self.state_dict(), mpath)
-        with open(mpath.replace('.pt', '.losses'), 'w') as f:
+        with open(mpath.replace('.pt', '.trainings'), 'w') as f:
+            f.write('kl_divergence, total flow, panelty, loss\n')
             for loss in losses:
-                f.write(f'{loss}\n')
+                f.write(f"{','.join(map(str, loss))}\n")
 
     def model_path(self, create_dir=False):
         """Return full name of the ML model."""

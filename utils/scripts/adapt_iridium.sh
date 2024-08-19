@@ -20,5 +20,5 @@ for intensity in 15; do
         --input-path ${RAW_INPUT_DIR} \
         --output-path ${OUTPUT_DIR} \
         --intensity ${intensity} \
-        --data-per-topo 1000
+        --data-per-topo 5000
 done
