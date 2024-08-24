@@ -12,6 +12,7 @@ from itertools import product
 from networkx.readwrite import json_graph
 from sklearn.model_selection import train_test_split
 from pathlib import Path
+from ot.lp import wasserstein_1d
 import dgl
 
 import torch
@@ -35,7 +36,7 @@ class SaTEEnv(object):
             num_path, dummy_path, edge_disjoint, dist_metric, rho,
             num_failure, device,
             work_dir, dataset, supervised, penalized,
-            flow_lambda,
+            flow_lambda, loss,
             orbit_params=None,
             raw_action_min=-5.0, raw_action_max=5.0):
         """Initialize SaTE environment.
@@ -72,6 +73,8 @@ class SaTEEnv(object):
         self.supervised = supervised
         self.penalized = penalized
         self.flow_lambda = flow_lambda
+        self.loss = loss
+
 
         # # init matrices related to topology
         # self.G = self._read_graph_json(topo)
@@ -289,6 +292,7 @@ class SaTEEnv(object):
         return reward, info
     
     def get_label(self):
+        assert self.supervised
         if self.supervised and self.mode == 'train':
             return self.train_label[self.idx].to(self.device)
         if self.supervised and self.mode == 'test':
@@ -298,7 +302,7 @@ class SaTEEnv(object):
         
         assert self.mode == 'train'
 
-        action = self.transform_raw_action(raw_action)
+        action = self.transform_raw_action(raw_action, prob=True)
 
         if self.supervised:
 
@@ -309,19 +313,22 @@ class SaTEEnv(object):
 
             labels = self.get_label()
 
-            # Adding a small value epsilon to avoid zeros in the labels
-            epsilon = 1e-10
-            labels = labels + epsilon
+            if self.loss == 'wasserstein':
+                supervised_loss = wasserstein_1d(action_sliced.T, labels.T).mean()
+            elif self.loss == 'kl_div':
 
-            # Renormalize to ensure the distributions still sum to 1
-            labels = labels / labels.sum(dim=1, keepdim=True)
+                # # Adding a small value epsilon to avoid zeros in the labels
+                # epsilon = 1e-10
+                # labels = labels + epsilon
 
-            # Compute the log of the model's output probabilities
-            log_output = action_sliced.log()
+                # # Renormalize to ensure the distributions still sum to 1
+                # labels = labels / labels.sum(dim=1, keepdim=True)
 
-            # Compute KL divergence
-            kl_div_loss = F.kl_div(log_output, labels, reduction='batchmean')
-            kl_div_loss.requires_grad_(True)
+                # Compute the log of the model's output probabilities
+                log_output = action_sliced.log()
+
+                # Compute KL divergence
+                supervised_loss = F.kl_div(log_output, labels, reduction='batchmean')
 
         action_ef = action.flatten() * self.obs['traffic']
 
@@ -336,17 +343,17 @@ class SaTEEnv(object):
 
         total_demand = sum(self.flow_values)
 
-        rounded_action = self.round_action(action_ef, num_round_iter=20)
+        rounded_action = self.round_action(action_ef, num_round_iter=1)
 
         self._next_obs()
 
         if self.supervised:
             if self.penalized:
-                return [rounded_action.sum() / total_demand, kl_div_loss, penalty.mean()], kl_div_loss + (-self.flow_lambda * action_ef.sum() + (penalty_mult * penalty).sum()) / (0.25 * self.flow_lambda * total_demand)
+                return [rounded_action.sum() / total_demand, supervised_loss, penalty.mean()], supervised_loss + (-self.flow_lambda * rounded_action.sum() + (penalty_mult * penalty).sum()) / (0.25 * self.flow_lambda * total_demand)
             else: 
-                return [rounded_action.sum() / total_demand, action_ef.sum(), penalty.mean()], kl_div_loss
+                return [rounded_action.sum() / total_demand, rounded_action.sum(), penalty.mean()], supervised_loss
         else:
-            return [rounded_action.sum() / total_demand, action_ef.sum(), penalty.mean()], -self.flow_lambda * action_ef.sum() + (penalty_mult * penalty).sum()
+            return [rounded_action.sum() / total_demand, rounded_action.sum(), penalty.mean()], -self.flow_lambda * rounded_action.sum() + (penalty_mult * penalty).sum()
 
 
     def get_obj(self, action):
@@ -359,7 +366,7 @@ class SaTEEnv(object):
                 action[self.p2e[0]], self.p2e[1]
                 )/self.obs['capacity']).max()
 
-    def transform_raw_action(self, raw_action):
+    def transform_raw_action(self, raw_action, prob=False):
         """Return network flow allocation as action.
 
         Args:
@@ -370,11 +377,23 @@ class SaTEEnv(object):
             raw_action, min=self.raw_action_min, max=self.raw_action_max)
 
         # translate ML output to split ratio through softmax
-        # 1 in softmax represent unallocated traffic
-        raw_action = raw_action.exp()
-        raw_action = raw_action / raw_action.sum(axis=-1)[:, None]
+        # raw_action = raw_action.exp()
+        # raw_action = raw_action / raw_action.sum(axis=-1)[:, None]
+        # raw_action = F.softmax(raw_action, dim=-1)
 
-        if (self.supervised or self.penalized) and self.mode == 'train':
+        raw_action = F.sigmoid(raw_action)
+
+        # Compute row sums and exceed mask
+        row_sums = raw_action.sum(dim=-1)
+        exceed_mask = row_sums > 1
+
+        # Create a new tensor to hold the normalized values without in-place modification
+        normalized_action = raw_action / row_sums.unsqueeze(-1).clamp(min=1)  # Normalizes only where sums exceed 1
+
+        # Blend the normalized actions back into the original raw_action tensor
+        raw_action = torch.where(exceed_mask.unsqueeze(-1), normalized_action, raw_action)
+
+        if prob:
             return raw_action
 
         # translate split ratio to flow
@@ -411,7 +430,14 @@ class SaTEEnv(object):
             else:
                 action = action.reshape(-1, self.num_path)
             ratio = action.sum(-1) / demand
-            action[ratio > 1, :] /= ratio[ratio > 1, None]
+            # Create mask
+            mask = ratio > 1
+
+            # Adjust action only where ratio > 1
+            adjusted_action = action / ratio.unsqueeze(-1).clamp(min=1)
+
+            # Use torch.where to apply the adjustment conditionally
+            action = torch.where(mask.unsqueeze(-1), adjusted_action, action)
             action = action.flatten()
 
         # iteratively reduce action proportionally if action exceed capacity
@@ -762,9 +788,9 @@ class SaTEEnv(object):
         # edge_index is D^(-0.5)*(adj)*D^(-0.5) without self-loop
         self.edge_index_values = torch.tensor(
             [1/math.sqrt(node2degree_dict[u]*node2degree_dict[v])
-                for u, v in zip(src_list+dst_list, dst_list+src_list)]).to(self.device)
+                for u, v in zip(src_list, dst_list)]).to(self.device)
         self.edge_index = torch.tensor(
-            [src_list+dst_list, dst_list+src_list], dtype=torch.long).to(self.device)
+            [src_list, dst_list], dtype=torch.long).to(self.device)
         p2e = torch.tensor([src_list, dst_list], dtype=torch.long).to(self.device)
         p2e[0] -= edge_num
         self.p2e = p2e

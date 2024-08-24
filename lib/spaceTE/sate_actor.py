@@ -109,9 +109,9 @@ class SaTEActor(nn.Module):
             logging.info(f'Loading spaceTE model from {mpath}')
             self.load_state_dict(torch.load(mpath, map_location=self.device))
 
-    def save_model(self, losses):
+    def save_model(self, losses, epoch):
         """Save from model fname."""
-        mpath = self.model_path(True)
+        mpath = self.model_path(True).replace('.pt', f'_{epoch}.pt')
         logging.info(f'Saving spaceTE model to {mpath}')
         torch.save(self.state_dict(), mpath)
         with open(mpath.replace('.pt', '.trainings'), 'w') as f:
@@ -162,15 +162,7 @@ class SaTEActor(nn.Module):
         # x = self.FlowGNN(flow)
         feature['problem'].nodes['link'].data['x'] = x
 
-        # Split the tensor into two halves
-        first_half, second_half = self.env.edge_index_values.split(self.env.edge_index_values.size(0) // 2)
-
-        # Compare the two halves
-        # are_same = torch.equal(first_half, second_half)
-
-        # print("First half and second half are the same:", are_same)
-
-        x = self.AlloGNN(feature['problem'], first_half.unsqueeze(1))
+        x = self.AlloGNN(feature['problem'], self.env.edge_index_values.unsqueeze(1))
         # x = x.reshape(
         #     self.num_path_node//self.num_path,
         #     self.num_path*(self.FlowGNN.num_layer+1))

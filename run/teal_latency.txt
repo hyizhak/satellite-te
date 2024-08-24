@@ -1,0 +1,28 @@
+Latency for 66 Satellites with path length 3:
+Average Model Latency: 0.0017055869102478027
+Average ADMM Latency: 0.0067746639251708984
+Average Total Latency: 0.008480250835418701
+Latency for 176 Satellites with path length 8:
+Average Model Latency: 0.010626792907714844
+Average ADMM Latency: 0.04985010623931885
+Average Total Latency: 0.06047689914703369
+Latency for 500 Satellites with path length 25:
+Average Model Latency: 0.13553720712661743
+Average ADMM Latency: 1.6218175292015076
+Average Total Latency: 1.757354736328125
+Latency for 66 Satellites with path length 7:
+Average Model Latency: 0.0019137859344482422
+Average ADMM Latency: 0.009524524211883545
+Average Total Latency: 0.011438310146331787
+Latency for 176 Satellites with path length 9:
+Average Model Latency: 0.01146608591079712
+Average ADMM Latency: 0.05765777826309204
+Average Total Latency: 0.06912386417388916
+Latency for 500 Satellites with path length 11:
+Average Model Latency: 0.06463706493377686
+Average ADMM Latency: 0.3962861895561218
+Average Total Latency: 0.4609232544898987
+Latency for 528 Satellites with path length 12:
+Average Model Latency: 0.12707388401031494
+Average ADMM Latency: 0.7455850839614868
+Average Total Latency: 0.8726589679718018

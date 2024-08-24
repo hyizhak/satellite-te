@@ -17,6 +17,7 @@ ARG_EDGE_DISJOINT = False
 ARG_DIST_METIRC = "min-hop"
 
 ARG_OBJ = "teal_total_flow"
+ARG_LOSS = "kl_div"
 ARG_SCALE_FACTOR = 1.0
 
 ARG_TEST_TM_PER_TOPO = None
@@ -46,6 +47,7 @@ logging.basicConfig(
 )
 
 OBJ_STRS = ["teal_total_flow", "rounded_total_flow", "total_flow", "teal_min_max_link_util"]
+LOSS_STRS = ["kl_div", "wasserstein"]
 SCALE_FACTORS = [1.0]
 
 def update_output_path(args, model):
@@ -55,13 +57,15 @@ def update_output_path(args, model):
         args.output_prefix = f'{parent_basename}_{problem_basename}_{model}'
     args.work_dir = os.path.join(args.output_dir, args.output_prefix)
 
-def read_solutions(file_path):
+def read_solutions(file_path, smoothing=0.1):
     solutions = []
     with open(file_path, 'rb') as f:
         while True:
             try:
                 # Load each solution sequentially
                 sol = pickle.load(f)
+                if smoothing > 0:
+                    sol = sol * (1 - smoothing) + smoothing / sol.shape[-1]                    
                 solutions.append(sol)
             except EOFError:
                 # End of file reached

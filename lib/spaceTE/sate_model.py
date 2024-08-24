@@ -5,11 +5,12 @@ import sys
 import os
 from tqdm import tqdm
 from networkx.readwrite import json_graph
+from ot.lp import wasserstein_1d
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader
+import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
 from .sate_actor import SaTEActor
@@ -18,7 +19,7 @@ from .utils import print_, smoothing
 
 
 class SaTE():
-    def __init__(self, sate_env, sate_actor, lr, supervised, penalized, early_stop):
+    def __init__(self, sate_env, sate_actor, lr, supervised, penalized, loss, early_stop):
         """Initialize SaTE model.
 
         Args:
@@ -36,6 +37,7 @@ class SaTE():
 
         self.supervised = supervised
         self.penalized = penalized
+        self.loss = loss
 
         # early stop when val result no longer changes
         self.early_stop = early_stop
@@ -96,7 +98,8 @@ class SaTE():
                 self.losses.append([x / len(idx) for x in loss_list])
 
             self.draw_loss()
-            self.save_model()
+            # if epoch > 3 * num_epoch // 4:
+            self.save_model(epoch+1)
 
             # early stop
             if self.early_stop:
@@ -143,7 +146,7 @@ class SaTE():
 
         with open(output_csv, "a") as resultf:
 
-            runtime_list, obj_list = [], []
+            runtime_list, obj_list, test_losses = [], [], []
             loop_obj = tqdm(
                 range(0, self.env.idx_stop),
                 desc="Testing: ", mininterval=600)
@@ -159,13 +162,26 @@ class SaTE():
                 runtime = time.time() - start_time
                 # get reward
                 if admm_test:
-                    # pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
-                    # reward, info = self.env.step(
-                    #     pseudo_action, num_admm_step=num_admm_step)
-                    label = self.env.get_label()
+                    pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
                     reward, info = self.env.step(
-                        label, num_admm_step=num_admm_step)
+                        pseudo_action, num_admm_step=num_admm_step)
+                    # label = self.env.get_label()
+                    # reward, info = self.env.step(
+                    #     label, num_admm_step=num_admm_step)
                 else:
+                    try:
+                        label = self.env.get_label()
+                    except:
+                        label = None
+
+                    action = self.env.transform_raw_action(raw_action, prob=True)
+
+                    if label is not None:
+                        if self.loss == 'kl_div':
+                            test_losses.append(F.kl_div(action.log(), label, reduction='batchmean'))
+                        elif self.loss == 'wasserstein':
+                            test_losses.append(wasserstein_1d(action.T, label.T).mean())
+                        
                     reward, info = self.env.step(
                         raw_action, num_admm_step=num_admm_step)
                 # add runtime in transforming, ADMM, rounding
@@ -197,8 +213,10 @@ class SaTE():
             runtime_avg = sum(runtime_list) / len(runtime_list)
             obj_avg = sum(obj_list) / len(obj_list)
             print(f'runtime: {runtime_avg:.4f}, obj: {obj_avg:.4f}')
+            if len(test_losses) > 0:
+                print(f'{self.loss}: {sum(test_losses)/len(test_losses):.4f}')
 
-    def draw_loss(self, smoothing_window=1000):
+    def draw_loss(self, smoothing_window=500):
         kl_divergence, total_flow, penalty, loss = zip(*self.losses)
         steps = range(1, len(self.losses) + 1)
         fig, axs = plt.subplots(2, 2, figsize=(10, 8))
@@ -220,8 +238,8 @@ class SaTE():
 
         axs[0, 1].plot(steps, total_flow)
         if self.supervised and self.penalized:
-            axs[0, 1].set_title('KL Divergence')
-            axs[0, 1].set_ylabel('KL Divergence')
+            axs[0, 1].set_title(self.loss)
+            axs[0, 1].set_ylabel(self.loss)
         else:
             axs[0, 1].set_title('Total Flow')
             axs[0, 1].set_ylabel('Total Flow')
@@ -238,8 +256,8 @@ class SaTE():
                 axs[1, 1].set_title('Combined Loss')
                 axs[1, 1].set_ylabel('Combined Loss')
             else:
-                axs[1, 1].set_title('KL Divergence')
-                axs[1, 1].set_ylabel('KL Divergence')
+                axs[1, 1].set_title(self.loss)
+                axs[1, 1].set_ylabel(self.loss)
         else:
             axs[1, 1].set_title('Penalized Optimization Loss')
             axs[1, 1].set_ylabel('Penalized Optimization Loss')
@@ -255,8 +273,8 @@ class SaTE():
         figure_path = os.path.join(model_folder_path, f'steps-{len(self.losses)}_losses.png')
         plt.savefig(figure_path)
 
-    def save_model(self):
-        self.actor.save_model(self.losses)
+    def save_model(self, epoch):
+        self.actor.save_model(self.losses, epoch)
 
     def load_model(self, quantized, compiled, model_path=None):
         self.actor.load_model(quantized, model_path)

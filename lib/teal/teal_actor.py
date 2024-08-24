@@ -135,7 +135,7 @@ class TealActor(nn.Module):
             # use normal distribution for action
             distribution = Normal(mean, std)
             sample = distribution.rsample()
-            raw_action = sample.detach()
+            raw_action = sample
             log_probability = distribution.log_prob(raw_action).sum(axis=-1)
 
         return raw_action, log_probability

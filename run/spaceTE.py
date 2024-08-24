@@ -32,9 +32,9 @@ def benchmark(args):
     
     obj, problem_path = args.obj, args.problem_path
     
-    train, test, admm_test, supervised, panelized, dummy = args.train, args.test, args.admm_test, args.supervised, args.penalized, args.dummy
+    train, test, admm_test, supervised, panelized, dummy, loss = args.train, args.test, args.admm_test, args.supervised, args.penalized, args.dummy, args.loss
 
-    print(f'Running SaTE with train={train}, supervised={supervised}, panelized={panelized}, test={test}, admm_test={admm_test}, dummy_path={dummy}')
+    print(f'Running SaTE with train={train}, supervised={supervised}, panelized={panelized}, test={test}, admm_test={admm_test}, dummy_path={dummy}, loss={loss}')
     
     device = torch.device(
         f"cuda:{args.devid}" if torch.cuda.is_available() else "cpu")
@@ -87,13 +87,21 @@ def benchmark(args):
     # output
     work_dir = args.work_dir
 
+    base = None
+
+    if train and model_path is not None:
+        mpath = Path(model_path)
+        base = mpath.parts[-3].rsplit('_', 1)[0]
+        base = mpath.parts[-4] + '_' + base
+        print(f'curriculum learning base: {base}')
+
     # ========== init SaTE env, actor, mode
     
     train_id = _sate_train_id(
         obj=obj, train_sz=trainval_tm_per_topo, val_ratio=val_ratio,
-        lr=lr, epoches=epoch_num, batch_sz=batch_size, supervised=supervised, penalized=panelized, flow_lambda=flow_lambda, dummy=dummy,
+        lr=lr, epoches=epoch_num, batch_sz=batch_size, supervised=supervised, penalized=panelized, flow_lambda=flow_lambda, dummy=dummy, loss=loss,
         coma_sample=sample_num, layers=layers, decoder=decoder_type,
-        rho=rho, admm_step=admm_step_num,
+        rho=rho, admm_step=admm_step_num, curriculum_learning=base
     )
 
     params = None
@@ -255,6 +263,7 @@ def benchmark(args):
         supervised=supervised,
         penalized=panelized,
         flow_lambda=flow_lambda,
+        loss=loss,
         orbit_params=params,
         num_failure=num_failure,
         device=device)
@@ -271,6 +280,7 @@ def benchmark(args):
         lr=lr,
         supervised=supervised,
         penalized=panelized,
+        loss=loss,
         early_stop=early_stop)
 
         
@@ -283,6 +293,9 @@ def benchmark(args):
 
     # ========== train
     if train:
+        if model_path is not None:
+            sate.load_model(quantized, compiled, model_path)
+
         train_log_path = os.path.join(
             AssetManager.train_log_dir(work_dir, create_dir=True),
             f'{train_id}.log'
@@ -315,7 +328,7 @@ def benchmark(args):
             gpu_load.append(gpu.load)
             gpu_memory_usage.append(gpu.memoryUtil)
 
-        sate.save_model()
+        # sate.save_model()
 
         train_stop_time = time.time()
         
@@ -359,18 +372,18 @@ def benchmark(args):
 
 def _sate_train_id(
         obj, train_sz, val_ratio,    # training data set
-        lr, epoches, batch_sz, supervised, penalized, flow_lambda, dummy, # training hyperparams
+        lr, epoches, batch_sz, supervised, penalized, flow_lambda, dummy, loss, # training hyperparams
         coma_sample, layers, decoder,            # hyperparams
-        rho, admm_step):        # ADMM hyperparams
+        rho, admm_step, curriculum_learning):        # ADMM hyperparams
     if supervised:
-        train_mode = 'supervised'
+        train_mode = 'supervised-' + loss
     elif penalized:
         train_mode = 'penaltized-optimization'
     else:
         train_mode = 'RL'
     return f'spaceTE_{train_mode}_' + \
     f'ep-{epoches}_' + f'dummy-path-{dummy}_' \
-    f'flow-lambda-{flow_lambda}_' + f'layers-{layers}'
+    f'flow-lambda-{flow_lambda}_' + f'layers-{layers}_base-{curriculum_learning}'
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -392,6 +405,7 @@ if __name__ == '__main__':
     parser.add_argument("--scale-factor", type=float, default=ARG_SCALE_FACTOR, choices=SCALE_FACTORS, help="traffic matrix scale factor")
     parser.add_argument("--dry-run", dest="dry_run", default=False, action="store_true", help="list problems to run")
     parser.add_argument("--obj", type=str, default=ARG_OBJ, choices=OBJ_STRS, help="objective function")
+    parser.add_argument("--loss", type=str, default=ARG_LOSS, choices=LOSS_STRS, help="loss function")
 
     parser.add_argument("--train", action="store_true")
     parser.add_argument("--test", action="store_true")
