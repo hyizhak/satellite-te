@@ -119,7 +119,9 @@ class SaTEEnv(object):
         self.idx_stop = len(self.dataset)
 
         self.idx = 0
+        start_time = time.time()
         self.obs = self._read_obs()
+        self.pre_runtime = time.time() - start_time
 
     def get_obs(self):
         """Return observation (capacity + traffic matrix)."""
@@ -203,15 +205,15 @@ class SaTEEnv(object):
         else:
             tm = torch.repeat_interleave(tm, self.num_path)
 
-        if self.mode == 'test':
+        # if self.mode == 'test':
             
-            self.init_ADMM(data)
+        #     self.init_ADMM(data)
 
-            _, _, admm_capacities = zip(*[(u, v, edata['capacity']) 
-                                    for u, v, edata in self.G_admm.edges(data=True)])
-            admm_capacities_tensor = torch.tensor(admm_capacities, dtype=torch.float32).to(self.device)
+        #     _, _, admm_capacities = zip(*[(u, v, edata['capacity']) 
+        #                             for u, v, edata in self.G_admm.edges(data=True)])
+        #     admm_capacities_tensor = torch.tensor(admm_capacities, dtype=torch.float32).to(self.device)
 
-            self.admm_obs = torch.concat([admm_capacities_tensor, admm_tm]).to(self.device)
+        #     self.admm_obs = torch.concat([admm_capacities_tensor, admm_tm]).to(self.device)
 
         # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
@@ -226,7 +228,9 @@ class SaTEEnv(object):
         self.idx += 1
         if self.idx == self.idx_stop:
             self.idx = 0
+        start_time = time.time()
         self.obs = self._read_obs()
+        self.pre_runtime = time.time() - start_time
         return self.obs
 
     def render(self):
@@ -274,7 +278,8 @@ class SaTEEnv(object):
                     action = action.reshape(-1, self.num_path+1)
                     action = action[:, 1:]
                     action = action.flatten()
-                action = self.ADMM.tune_action(self.admm_obs, action, num_admm_step)
+                if num_admm_step > 0:
+                    action = self.ADMM.tune_action(self.admm_obs, action, num_admm_step)
                 # add back the first column (0s)
                 if self.dummy_path:
                     action = action.reshape(-1, self.num_path)
@@ -283,7 +288,8 @@ class SaTEEnv(object):
                         dim=1)
                     action = action.flatten()
                 action = self.round_action(action)
-            info['runtime'] = time.time() - start_time
+            info['pre_runtime'] = self.pre_runtime
+            info['post_runtime'] = time.time() - start_time
             info['sol_mat'] = self.extract_sol_mat(action)
             reward = self.get_obj(action)
 
@@ -361,9 +367,9 @@ class SaTEEnv(object):
 
         if self.obj.endswith('total_flow'):
             return action.sum(axis=-1)
-        elif self.obj == 'min_max_link_util':
+        elif self.obj == 'teal_min_max_link_util':
             return (torch_scatter.scatter(
-                action[self.p2e[0]], self.p2e[1]
+                action[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node
                 )/self.obs['capacity']).max()
 
     def transform_raw_action(self, raw_action, prob=False):
@@ -491,7 +497,7 @@ class SaTEEnv(object):
         num_path = self.num_path + 1 if self.dummy_path else self.num_path
 
         if self.obj == 'rounded_total_flow':
-            path_flow = self.round_action(path_flow)
+            path_flow = self.round_action(path_flow, 1)
 
         edge_flow = torch_scatter.scatter(path_flow[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node)
         util = edge_flow/self.obs['capacity']
@@ -551,7 +557,7 @@ class SaTEEnv(object):
             # prepare paths related to max_util_edge
             max_util_paths = torch.zeros(self.num_path_node).to(self.device)
             max_util_paths[self.p2e[0, self.p2e[1] == max_util_edge]] =\
-                1/self.obs[max_util_edge]
+                1/self.obs['capacity'][max_util_edge]
 
             # sample raw_actions and change each node pair at a time for reward
             for _ in range(num_sample):
@@ -827,7 +833,7 @@ class SaTEEnv(object):
 
         path = Path(self.problem_path)
 
-        if len(path.parts) > 1 and path.parts[-3] == 'starlink':
+        if len(path.parts) > 1 and (path.parts[-3] == 'starlink' or path.parts[-4] == 'starlink'):
             sat2user = generate_sat2user(params.Offset5, params.GrdStationNum, params.ism)
             G = nx.DiGraph()
             G.add_nodes_from(range(params.graph_node_num))
@@ -847,11 +853,11 @@ class SaTEEnv(object):
                 # Downlink
                 G.add_edge(i, sat2user(i), capacity=params.downlink_cap)
 
-            self.G_admm = copy.deepcopy(G)
+            self.G_admm = G
 
-            if self.dummy_path:
-                for s, d, flow in zip(self.src, self.dst, self.flow_values):
-                    G.add_edge(s, d, capacity = flow)
+            # if self.dummy_path:
+            #     for s, d, flow in zip(self.src, self.dst, self.flow_values):
+            #         G.add_edge(s, d, capacity = flow)
             # ## 3. Inter ground station links
             # for i in range(params.GrdStationNum):
             #     for j in range(params.GrdStationNum):
@@ -873,11 +879,11 @@ class SaTEEnv(object):
                 G.add_edge(i, i+66, capacity=100)
                 G.add_edge(i+66, i, capacity=100)
 
-            self.G_admm = copy.deepcopy(G)
+            self.G_admm = G
 
-            if self.dummy_path:
-                for s, d, flow in zip(self.src, self.dst, self.flow_values):
-                    G.add_edge(s, d, capacity = flow)
+            # if self.dummy_path:
+            #     for s, d, flow in zip(self.src, self.dst, self.flow_values):
+            #         G.add_edge(s, d, capacity = flow)
 
             return G
 

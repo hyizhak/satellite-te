@@ -111,20 +111,22 @@ class SaTEActor(nn.Module):
 
     def save_model(self, losses, epoch):
         """Save from model fname."""
-        mpath = self.model_path(True).replace('.pt', f'_{epoch}.pt')
-        logging.info(f'Saving spaceTE model to {mpath}')
-        torch.save(self.state_dict(), mpath)
+        mpath = self.model_path(True)
         with open(mpath.replace('.pt', '.trainings'), 'w') as f:
             f.write('kl_divergence, total flow, panelty, loss\n')
             for loss in losses:
                 f.write(f"{','.join(map(str, loss))}\n")
+        mpath = mpath.replace('.pt', f'_{epoch}.pt')
+        logging.info(f'Saving spaceTE model to {mpath}')
+        torch.save(self.state_dict(), mpath)
+
 
     def model_path(self, create_dir=False):
         """Return full name of the ML model."""
-        return os.path.join(
-            AssetManager.model_dir(self.env.work_dir, create_dir=create_dir),
-            f'{self.train_id}.pt'
-        )
+        mdir = os.path.join(AssetManager.model_dir(self.env.work_dir, create_dir=create_dir),
+            f'{self.train_id}')
+        os.makedirs(mdir, exist_ok=True)
+        return os.path.join(mdir, 'epoch.pt')
 
     # def load_model(self):
     #     """Load from model fname."""

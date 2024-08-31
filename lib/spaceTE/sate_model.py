@@ -93,8 +93,10 @@ class SaTE():
 
                 loss.backward()
                 self.actor_optimizer.step()
-                loss_list = [satisfied_ratio.item(), total_flow.item(), panelty.item(), loss.item()]
-                    
+                if self.supervised or self.penalized:
+                    loss_list = [satisfied_ratio.item(), total_flow.item(), panelty.item(), loss.item()]
+                else:
+                    loss_list = [satisfied_ratio, total_flow, panelty, loss.item()]
                 self.losses.append([x / len(idx) for x in loss_list])
 
             self.draw_loss()
@@ -146,7 +148,7 @@ class SaTE():
 
         with open(output_csv, "a") as resultf:
 
-            runtime_list, obj_list, test_losses = [], [], []
+            pre_runtime_list, model_runtime_list, post_runtime_list, obj_list, test_losses = [], [], [], [], []
             loop_obj = tqdm(
                 range(0, self.env.idx_stop),
                 desc="Testing: ", mininterval=600)
@@ -159,7 +161,7 @@ class SaTE():
                 # get action
                 start_time = time.time()
                 raw_action = self.actor.act(obs)
-                runtime = time.time() - start_time
+                model_runtime = time.time() - start_time
                 # get reward
                 if admm_test:
                     pseudo_action = torch.ones(raw_action.shape).to(raw_action.device)
@@ -185,8 +187,12 @@ class SaTE():
                     reward, info = self.env.step(
                         raw_action, num_admm_step=num_admm_step)
                 # add runtime in transforming, ADMM, rounding
-                runtime += info['runtime']
-                runtime_list.append(runtime)
+                pre_runtime = info['pre_runtime']
+                post_runtime = info['post_runtime']
+                pre_runtime_list.append(pre_runtime)
+                model_runtime_list.append(model_runtime)
+                post_runtime_list.append(post_runtime)
+                # runtime = model_runtime + post_runtime
                 # show satisfied demand instead of total flow
                 obj_list.append(
                     reward.item()/problem_dict['total_demand']
@@ -198,7 +204,7 @@ class SaTE():
                 #     'obj': '%.4f' % (sum(obj_list)/len(obj_list)),
                 #     })
 
-                assert problem_dict['obj'].endswith('total_flow')
+                # assert problem_dict['obj'].endswith('total_flow')
 
                 result_line = output_placeholder.format(
                     problem_dict['topo_idx'],
@@ -206,13 +212,15 @@ class SaTE():
                     problem_dict['total_demand'],
                     reward,
                     reward / problem_dict['total_demand'],
-                    runtime)
+                    pre_runtime, model_runtime, post_runtime)
 
                 print(result_line, file=resultf)
 
-            runtime_avg = sum(runtime_list) / len(runtime_list)
+            pre_runtime_avg = sum(pre_runtime_list) / len(pre_runtime_list)
+            model_runtime_avg = sum(model_runtime_list) / len(model_runtime_list)
+            post_runtime_avg = sum(post_runtime_list) / len(post_runtime_list)
             obj_avg = sum(obj_list) / len(obj_list)
-            print(f'runtime: {runtime_avg:.4f}, obj: {obj_avg:.4f}')
+            print(f'pre-processing runtime: {pre_runtime_avg:.4f}, model runtime: {model_runtime_avg:.4f}, post-processing runtime: {post_runtime_avg:.4f}, obj: {obj_avg:.4f}')
             if len(test_losses) > 0:
                 print(f'{self.loss}: {sum(test_losses)/len(test_losses):.4f}')
 

@@ -1,28 +1,29 @@
-import pickle
-import numpy as np
+import os
 
-dataset_path = '/data/projects/11003765/sate/input/starlink/DataSetForSaTE100/ISL/StarLink_DataSetForAgent100_5000_B.pkl'
+folder_gen = lambda intensity, mode: f'/data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE{intensity}_{mode}_spaceTE/models/spaceTE_supervised-kl_div_ep-60_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_mixed_{mode}'
 
-with open(dataset_path, 'rb') as f:
-    dataset = pickle.load(f)
+folder = folder_gen(50, 'ISL')
 
-def calculate_average_length(dictionary):
-    total_length = 0
-    num_sublists = 0
+files = os.listdir(folder)
+
+files = sorted(files)
+
+for file_name in files:
+    if file_name.endswith('.pt'):
+        old_path = os.path.join(folder, file_name)
+
+        new_name = 'epoch_' + file_name.split('_')[-1]
+
+        new_path = os.path.join(folder, new_name)
+
+        os.rename(old_path, new_path)
+
+    if file_name.endswith('.trainings') and not file_name.endswith('60.trainings'):
+
+        os.remove(os.path.join(folder, file_name))
     
-    for key, lists in dictionary.items():
-        for sublist in lists:
-            total_length += len(sublist)
-            num_sublists += 1
-    
-    average_length = total_length / num_sublists
-    return average_length
 
-path_len = 0
-for i in range(10):
-    path_len += calculate_average_length(dataset[i]['path'])
-
-print(path_len / 10)
+print(files)
 
 
 

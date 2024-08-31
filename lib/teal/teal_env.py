@@ -423,30 +423,30 @@ class TealEnv(object):
                 for j in range(params.GrdStationNum):
                     if i == j:
                         continue
-                    G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
-                    G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+                    G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0.001)
+                    G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0.001)
 
             ## 4. User-ground station links
             for i in range(params.Offset5):
                 for j in range(params.GrdStationNum):
-                    G.add_edge(sat2user(i), j + params.Offset5, capacity=0)
-                    G.add_edge(j + params.Offset5, sat2user(i), capacity=0)
+                    G.add_edge(sat2user(i), j + params.Offset5, capacity=0.001)
+                    G.add_edge(j + params.Offset5, sat2user(i), capacity=0.001)
 
             ## 5. Satellite-ground station links
             for i in range(params.Offset5):
                 for j in range(params.GrdStationNum):
-                    # if G.has_edge(i, j + params.Offset5):
-                    #     continue
-                    G.add_edge(i, j + params.Offset5, capacity=0)
-                    G.add_edge(j + params.Offset5, i, capacity=0)
+                    if G.has_edge(i, j + params.Offset5):
+                        continue
+                    G.add_edge(i, j + params.Offset5, capacity=0.001)
+                    G.add_edge(j + params.Offset5, i, capacity=0.001)
 
             ## 6. Inter-user links
             for i in range(params.Offset5):
                 for j in range(params.Offset5):
                     if i == j:
                         continue
-                    G.add_edge(sat2user(i), sat2user(j), capacity=0)
-                    G.add_edge(sat2user(j), sat2user(i), capacity=0)
+                    G.add_edge(sat2user(i), sat2user(j), capacity=0.001)
+                    G.add_edge(sat2user(j), sat2user(i), capacity=0.001)
 
         return G
 

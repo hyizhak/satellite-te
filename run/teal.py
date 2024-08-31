@@ -25,6 +25,8 @@ ARG_TEST = True
 def benchmark(args):
     
     obj, problem_path = args.obj, args.problem_path
+
+    print(f'objective: {obj}')
     
     train, test = args.train, args.test
     
@@ -80,19 +82,29 @@ def benchmark(args):
     if match is None:
         params = None
     else:
-        size = int(match.group())
+        if path.parts[-2].startswith('Intensity'):
 
-        print(f'Loading reduced Starlink data for size {size}')
+            intensity = int(match.group())
 
-        match size:
-            case 176:
-                reduced = 18
-            case 500:
-                reduced = 8
-            case 528:
-                reduced = 6
-            case 1500:
-                reduced = 2
+            print(f'Loading reduced Starlink data for size 500, intensity {intensity}')
+
+            reduced = 8
+
+        else:
+
+            size = int(match.group())
+
+            print(f'Loading reduced Starlink data for size {size}')
+
+            match size:
+                case 176:
+                    reduced = 18
+                case 500:
+                    reduced = 8
+                case 528:
+                    reduced = 6
+                case 1500:
+                    reduced = 2
 
         if path.parts[-1] == 'GrdStation_teal':
 

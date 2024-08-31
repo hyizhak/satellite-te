@@ -30,7 +30,9 @@ TEST_HEADERS = [
             "total_demand",
             "obj_val",
             "ratio",
-            "runtime",
+            "pre_runtime",
+            "model_runtime",
+            "post_runtime"
         ]
 TEST_PLACEHOLDER = ','.join(['{}' for _ in TEST_HEADERS])
 

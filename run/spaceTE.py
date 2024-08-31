@@ -108,7 +108,7 @@ def benchmark(args):
 
     path = Path(problem_path)
 
-    if len(path.parts) > 1 and path.parts[-3] == 'starlink':
+    if len(path.parts) > 1 and (path.parts[-3] == 'starlink' or path.parts[-4] == 'starlink'):
 
         print('Starlink!')
 
@@ -176,6 +176,49 @@ def benchmark(args):
                     dataset = dataset[:len(label)]
 
                     dataset = (dataset, label)
+
+        elif path.parts[-3] == 'starlink_500_fixed_topo':
+            intensity = path.parts[-2].split("_")[1]
+
+            print(f'Loading starlink_500 data for intensity {intensity}')
+
+            reduced = 8
+
+            if path.parts[-1] == 'GrdStation':
+
+                params = OrbitParams(
+                    GrdStationNum=222,
+                    Offset5=round(2 * 22 * 72 / reduced),
+                    graph_node_num=round(2 * 22 * 72 / reduced) * 2 + 222,
+                    isl_cap=200,
+                    uplink_cap=800,
+                    downlink_cap=800,
+                    ism=ISM.GRD_STATION,
+                )
+
+            elif path.parts[-1] == 'ISL':
+
+                params = OrbitParams(
+                    GrdStationNum=0,
+                    Offset5=round(2 * 22 * 72 / reduced),
+                    graph_node_num=round(2 * 22 * 72 / reduced) * 2,
+                    isl_cap=200,
+                    uplink_cap=800,
+                    downlink_cap=800,
+                    ism=ISM.ISL,
+                )
+
+            print(params)
+
+            with open(os.path.join(problem_path, f'StarLink_DataSetForAgent{intensity}_5000_Size500.pkl'), 'rb') as file:
+                dataset = pickle.load(file)
+
+            if supervised:
+                sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-500_fixed_mode-{path.parts[-1]}_intensity-{intensity}_volume-5000_solutions.pkl')
+                label = read_solutions(sol_dir)
+                dataset = dataset[:len(label)]
+
+                dataset = (dataset, label)
 
             
         else:

@@ -1,0 +1,289 @@
+#!/bin/bash
+source $(dirname $(readlink -f $0))/env
+
+mkdir -p $OUTPUT_DIR
+
+RUN_TOPO_NUM=1
+
+PROBLEM_LIST=$(cd $INPUT_DIR/starlink; ls)
+
+# PROBLEM_LIST=("IridiumDataSet14day20sec_Int5" "IridiumDataSet14day20sec_Int7p5")
+
+echo "Problem list: $PROBLEM_LIST"
+
+# for intensity in 25 50 75 100; do
+#     # python ${SPACETE_SCRIPT} \
+#     #     --problem-path ${INPUT_DIR}/starlink/starlink_500_fixed_topo/Intensity_${intensity}/ISL \
+#     #     --output-dir ${OUTPUT_DIR}/comb_supervised \
+#     #     --topo-num ${RUN_TOPO_NUM} \
+#     #     --train --test --admm-steps 10 --supervised --penalized --epochs 12 \
+#     #     --model-path /data/projects/11003765/sate/satte/satellite-te/output/curriculum_supervised/starlink_500_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-10_dummy-path-False_flow-lambda-25_layers-0_base-supervised_new_form_Intensity_15.pt
+
+#     python ${TEAL_SCRIPT} \
+#         --problem-path ${INPUT_DIR}/starlink/starlink_500_fixed_topo/Intensity_${intensity}/ISL_teal \
+#         --output-dir ${OUTPUT_DIR}/teal \
+#         --topo-num ${RUN_TOPO_NUM} --obj total_flow
+# done
+
+# for mode in ISL GrdStation; do
+#     for problem in mixed; do
+#         echo -e "\n\n\n Training model on problem: $problem with mode: $mode"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/supervised \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --train --test --epochs 10 --lr 0.001 --admm-steps 0 --bsz 4 --supervised
+#     done
+# done
+
+# for problem in DataSetForSaTE25 DataSetForSaTE50 DataSetForSaTE75; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Testing MLU model on problem: $problem with mode: $mode"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/comb_supervised \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --test --admm-steps 0 --obj teal_min_max_link_util --epochs 12 \
+#             --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/${problem}_${mode}_spaceTE/models/spaceTE_RL_ep-12_dummy-path-False_flow-lambda-25_layers-0_base-None/epoch_12.pt
+#     done
+# done
+
+for problem in DataSetForSaTE50; do
+    for mode in GrdStation; do
+        echo -e "\n\n\n Training and Testing MLU model on problem: $problem with mode: $mode"
+
+        python ${SPACETE_SCRIPT} \
+            --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+            --output-dir ${OUTPUT_DIR}/comb_supervised \
+            --topo-num ${RUN_TOPO_NUM} \
+            --train --test --admm-steps 0 --obj teal_min_max_link_util --epochs 8 --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE50_GrdStation_spaceTE/models/spaceTE_RL_ep-12_dummy-path-False_flow-lambda-25_layers-0_base-None/epoch_12.pt
+    done
+done
+
+# for problem in DataSetForSaTE25 DataSetForSaTE50 DataSetForSaTE75 DataSetForSaTE100; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Testing model on problem: $problem with mode: $mode with admm"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/comb_supervised \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --test --admm-steps 10 --supervised \
+#             --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/${problem}_${mode}_spaceTE/models/spaceTE_supervised-kl_div_ep-60_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_mixed_${mode}/epoch_60.pt
+            
+#     done
+# done
+
+# for failure in 0 0.001 0.01 0.05; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Testing model on problem: $problem with mode: $mode with failures: $failure"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/${mode} \
+#             --output-dir ${OUTPUT_DIR}/comb_supervised \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --test --admm-steps 0 --supervised --failures $failure\
+#             --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE100_${mode}_spaceTE/models/spaceTE_supervised-kl_div_ep-60_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_mixed_${mode}/epoch_60.pt
+            
+#     done
+# done
+
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/iridium/new_form/Intensity_15 \
+#     --output-dir ${OUTPUT_DIR}/penalized_optimization \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 0 --penalized --epochs 200 --flow-lambda 50
+
+
+# for mode in ISL GrdStation; do
+#     echo -e "\n\n\n Training model on problem: starlink_1500 with mode: $mode"
+
+#     python ${SPACETE_SCRIPT} \
+#         --problem-path ${INPUT_DIR}/starlink/starlink_1500/${mode} \
+#         --output-dir ${OUTPUT_DIR}/supervised \
+#         --topo-num ${RUN_TOPO_NUM} \
+#         --train --test --admm-steps 0 --supervised --epochs 10 --lr 0.001 --bsz 4
+            
+# done
+
+
+# echo -e "\n\n\n Training model on problem: Iridium_15"
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/iridium/new_form/Intensity_15 \
+#     --output-dir ${OUTPUT_DIR}/supervised \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 10 --supervised --epochs 10
+
+# for problem in mixed; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Training penalized optimization on problem: $problem with mode: $mode"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/penalized_optimization \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --train --test --admm-steps 10 --supervised --penalized --epochs 100 --flow-lambda 50
+            
+#     done
+# done
+
+# for mode in GrdStation; do
+#     for problem in starlink_500; do
+#         echo -e "\n\n\n Training and Testing model on problem: $problem with mode: $mode"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/curriculum_supervised \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --train --test --admm-steps 10 --supervised --epochs 10 \
+#             --model-path /data/projects/11003765/sate/satte/satellite-te/output/supervised/new_form_Intensity_15_spaceTE/models/spaceTE_supervised_ep-10_dummy-path-False_flow-lambda-25_layers-0.pt
+#     done
+# done
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE75/ISL \
+#     --output-dir ${OUTPUT_DIR}/comb_supervised \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 10 --supervised --penalized --epochs 60 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/curriculum_supervised/mixed_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-10_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_starlink_1500_ISL.pt
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE50/ISL \
+#     --output-dir ${OUTPUT_DIR}/comb_supervised \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 10 --supervised --penalized --epochs 60 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/curriculum_supervised/mixed_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-10_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_starlink_1500_ISL.pt
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE25/ISL \
+#     --output-dir ${OUTPUT_DIR}/comb_supervised \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 10 --supervised --penalized --epochs 60 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/curriculum_supervised/mixed_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-10_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_starlink_1500_ISL.pt
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/starlink_1500/ISL \
+#     --output-dir ${OUTPUT_DIR}/comb_supervised \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 10 --supervised --penalized --epochs 12 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/curriculum_supervised/starlink_1500_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-10_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_starlink_500_ISL.pt
+
+# echo -e "\n\n\n Testing 4k model with 20 step round"
+
+# echo -e "\n\n\n Evenly allocated, 10 admm"
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#     --output-dir ${OUTPUT_DIR}/latency \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test --admm-test --admm-steps 10 --supervised --epochs 10 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE100_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-40_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_DataSetForSaTE100_ISL.pt
+
+# echo -e "\n\n\n Evenly allocated, 0 admm"
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#     --output-dir ${OUTPUT_DIR}/latency \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test --admm-test --admm-steps 0 --supervised --epochs 10 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE100_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-40_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_DataSetForSaTE100_ISL.pt
+
+# echo -e "\n\n\n Trained model, 10 admm"
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#     --output-dir ${OUTPUT_DIR}/latency \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test --admm-steps 10 --supervised --epochs 10 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE100_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-40_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_DataSetForSaTE100_ISL.pt
+
+# echo -e "\n\n\n Trained model, 0 admm"
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#     --output-dir ${OUTPUT_DIR}/latency \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test --admm-steps 0 --supervised --epochs 10 \
+#     --model-path /data/projects/11003765/sate/satte/satellite-te/output/comb_supervised/DataSetForSaTE100_ISL_spaceTE/models/spaceTE_supervised-kl_div_ep-40_dummy-path-False_flow-lambda-25_layers-0_base-curriculum_supervised_DataSetForSaTE100_ISL.pt
+
+
+# echo -e "\n\n\n Testing iridium model on problem: Iridium_15"
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/iridium/new_form/Intensity_15 \
+#     --output-dir ${OUTPUT_DIR}/scalability_iridium \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --test --admm-steps 10 --model-path /data/projects/11003765/sate/satte/satellite-te/output/supervised/new_form_Intensity_15_spaceTE/models/spaceTE_obj-teal_total_flow_supervised_lr-0.001_ep-10_sample-200_layers-0_decoder-linear.pt
+
+# for problem in starlink_500 starlink_1500 DataSetForSaTE100; do
+#     for mode in ISL GrdStation; do
+#         echo -e "\n\n\n Testing iridium model on problem: $problem with mode: $mode"
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR}/scalability_iridium \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --test --admm-steps 10 --model-path /data/projects/11003765/sate/satte/satellite-te/output/supervised/new_form_Intensity_15_spaceTE/models/spaceTE_obj-teal_total_flow_supervised_lr-0.001_ep-10_sample-200_layers-0_decoder-linear.pt
+            
+#     done
+# done
+
+# python ${SPACETE_SCRIPT} \
+#     --problem-path ${INPUT_DIR}/starlink/mixed/ISL \
+#     --output-dir ${OUTPUT_DIR}/penalized_optimization \
+#     --topo-num ${RUN_TOPO_NUM} \
+#     --train --test --admm-steps 0 --penalized --epochs 10 --bsz 4 --layers 3
+
+
+# for admm_steps in 0 5 10 15; do
+#     echo -e "\n\n\n Testing with admm_steps: $admm_steps"
+#     python ${SPACETE_SCRIPT} \
+#         --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#         --output-dir ${OUTPUT_DIR}/supervised \
+#         --topo-num ${RUN_TOPO_NUM} \
+#         --test --admm-test --admm-steps ${admm_steps} --supervised \
+#         --epochs 5 --lr 0.0001
+
+#     python ${SPACETE_SCRIPT} \
+#         --problem-path ${INPUT_DIR}/starlink/DataSetForSaTE100/ISL \
+#         --output-dir ${OUTPUT_DIR}/supervised \
+#         --topo-num ${RUN_TOPO_NUM} \
+#         --test --admm-steps ${admm_steps} --supervised \
+#         --epochs 5 --lr 0.0001
+# done
+
+# for problem in DataSetForSaTE100; do
+#     for mode in ISL; do
+#         for num_layer in 0; do
+#             for obj in total_flow rounded_total_flow teal_total_flow; do
+#             echo -e "\n\n\n Training model on problem: $problem with mode: $mode and num_layer: $num_layer and obj: $obj"
+
+#             python ${SPACETE_SCRIPT} \
+#                 --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#                 --output-dir ${OUTPUT_DIR} \
+#                 --topo-num ${RUN_TOPO_NUM} \
+#                 --train --epochs 1 --layers ${num_layer} --obj ${obj} --bsz 16 \
+#                 --test --admm-steps 0
+#             done
+#         done
+#     done
+# done
+
+
+# for problem in starlink_500 starlink_1500 DataSetForSaTE100; do
+#     for mode in ISL GrdStation; do
+#         # echo -e "\n\n\n Testing Iridium model on problem: $problem with mode: $mode"
+#         echo -e "\n\n\n Training and Testing model on problem: $problem with mode: $mode"
+
+#         # python ${SPACETE_SCRIPT} \
+#         #     --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#         #     --output-dir ${OUTPUT_DIR}/scalability \
+#         #     --topo-num ${RUN_TOPO_NUM} \
+#         #     --test --admm-steps 0 \
+#         #     --model-path /data/projects/11003765/sate/satte/satellite-te/output/iridium/new_form_Intensity_15_spaceTE/models/spaceTE_topo-1_tsz-None_vr-0.2_lr-0.0001_ep-1_bsz-32_sample-5_layers-0_rho-1.0_step-10.pt
+
+#         python ${SPACETE_SCRIPT} \
+#             --problem-path ${INPUT_DIR}/starlink/${problem}/${mode} \
+#             --output-dir ${OUTPUT_DIR} \
+#             --topo-num ${RUN_TOPO_NUM} \
+#             --train --test --epochs 1 --admm-steps 0 
+#     done
+# done
