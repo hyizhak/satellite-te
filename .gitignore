@@ -159,11 +159,15 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-# data folders
 topologies/paths
 input
 raw_data
 utils/scripts/*.out
+
+output/*/*/models/*
+
+!output/*/*/models/*/epoch_12.pt
+!output/*/*/models/*/epoch_60.pt
 
 sing_image/
 

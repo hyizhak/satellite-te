@@ -19,6 +19,5 @@ for intensity in 15; do
     python ${IRIDIUM_NEW_FORM_ADAPTER_SCRIPT} \
         --input-path ${RAW_INPUT_DIR} \
         --output-path ${OUTPUT_DIR} \
-        --intensity ${intensity} \
-        --data-per-topo 5000
+        --intensity ${intensity} 
 done

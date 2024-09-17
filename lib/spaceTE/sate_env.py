@@ -37,7 +37,7 @@ class SaTEEnv(object):
             num_failure, device,
             work_dir, dataset, supervised, penalized,
             flow_lambda, loss,
-            orbit_params=None,
+            orbit_params=None, need_topo=False,
             raw_action_min=-5.0, raw_action_max=5.0):
         """Initialize SaTE environment.
 
@@ -75,22 +75,6 @@ class SaTEEnv(object):
         self.flow_lambda = flow_lambda
         self.loss = loss
 
-
-        # # init matrices related to topology
-        # self.G = self._read_graph_json(topo)
-        # self.capacity = torch.FloatTensor(
-        #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
-        # self.num_edge_node = len(self.G.edges)
-        # self.num_path_node = self.num_path * self.G.number_of_nodes()\
-        #     * (self.G.number_of_nodes()-1)
-        # self.edge_index, self.edge_index_values, self.p2e = \
-        #     self.get_topo_matrix(topo, num_path, edge_disjoint, dist_metric)
-
-        # # init ADMM
-        # self.ADMM = ADMM(
-        #     self.p2e, self.num_path, self.num_path_node,
-        #     self.num_edge_node, rho, self.device)
-
         self.rho = rho
 
         # min/max value when clamp raw action
@@ -98,10 +82,16 @@ class SaTEEnv(object):
         self.raw_action_max = raw_action_max
         
         # prepare the dataset
-        if self.supervised:
-            self.train_dataset, self.test_dataset, self.train_label, self.test_label = train_test_split(dataset[0], dataset[1], test_size=0.2, random_state=42)
-        else:
-            self.train_dataset, self.test_dataset = train_test_split(dataset, test_size=0.2, random_state=42)
+        if need_topo:
+            self.train_dataset = dataset
+        else: 
+            if self.supervised:
+                if len(dataset) == 2:
+                    self.train_dataset, self.test_dataset, self.train_label, self.test_label = train_test_split(dataset[0], dataset[1], test_size=0.2, random_state=42)
+                else:
+                    self.train_dataset, self.test_dataset, self.train_label, self.test_label = dataset
+            else:
+                self.train_dataset, self.test_dataset = train_test_split(dataset, test_size=0.2, random_state=42)
 
         self.mode = None
         self.reset('train')
@@ -154,20 +144,6 @@ class SaTEEnv(object):
         # self.capacity = torch.FloatTensor(
         #     [float(c_e) for u, v, c_e in self.G.edges.data('capacity')])
         self.num_edge_node = len(self.G.edges)
-        
-        # src, dst, capacity = [], [], []
-        # for u, v, data in self.G.edges(data=True):
-        #     src.append(u)
-        #     dst.append(v)
-        #     capacity.append(data['capacity'])
-
-        # capacity = torch.FloatTensor(capacity).to(self.device)
-
-        # # Create a DGL graph from the node tensor
-        # self.G_dgl = dgl.graph((torch.tensor(src), torch.tensor(dst))).to(self.device)
-
-        # # Add edge data (capacity) to the DGL graph
-        # self.G_dgl.edata['capacity'] = capacity
 
         # Extract edges and capacities
         src, dst, capacities = zip(*[(u, v, edata['capacity']) 
@@ -205,17 +181,6 @@ class SaTEEnv(object):
         else:
             tm = torch.repeat_interleave(tm, self.num_path)
 
-        # if self.mode == 'test':
-            
-        #     self.init_ADMM(data)
-
-        #     _, _, admm_capacities = zip(*[(u, v, edata['capacity']) 
-        #                             for u, v, edata in self.G_admm.edges(data=True)])
-        #     admm_capacities_tensor = torch.tensor(admm_capacities, dtype=torch.float32).to(self.device)
-
-        #     self.admm_obs = torch.concat([admm_capacities_tensor, admm_tm]).to(self.device)
-
-        # obs = torch.concat([self.capacity, tm]).to(self.device)
         obs = {"topo": self.G_dgl,
                "capacity": self.capacities_tensor,
                "traffic": tm,
@@ -586,14 +551,6 @@ class SaTEEnv(object):
 
         return nx.read_gpickle(topo)
 
-    # def path_full_fname(self, topo, num_path, edge_disjoint, dist_metric):
-    #     """Return full name of the topology path."""
-
-    #     return os.path.join(
-    #         TOPOLOGIES_DIR, "paths", "path-form",
-    #         "{}-{}-paths_edge-disjoint-{}_dist-metric-{}-dict.pkl".format(
-    #             topo, num_path, edge_disjoint, dist_metric))
-
     def get_path(self, num_path, edge_disjoint, dist_metric):
         """Return path dictionary."""
 
@@ -645,55 +602,6 @@ class SaTEEnv(object):
                 path_dict[(s_k, t_k)] = path_dict[(s_k, t_k)][:self.num_path]
         return path_dict
 
-    # def get_topo_matrix(self, topo, num_path, edge_disjoint, dist_metric):
-    #     """
-    #     Return matrices related to topology.
-    #     edge_index, edge_index_values: index and value for matrix
-    #     D^(-0.5)*(adjacent)*D^(-0.5) without self-loop
-    #     p2e: [path_node_idx, edge_nodes_inx]
-    #     """
-
-    #     # get regular path dict
-    #     path_dict = self.get_regular_path(
-    #         topo, num_path, edge_disjoint, dist_metric)
-        
-    #     self.paths = path_dict
-
-    #     # edge nodes' degree, index lookup
-    #     edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
-    #     node2degree_dict = {}
-    #     edge_num = len(self.G.edges)
-
-    #     # build edge_index
-    #     src, dst, path_i = [], [], 0
-    #     for s in range(len(self.G)):
-    #         for t in range(len(self.G)):
-    #             if s == t:
-    #                 continue
-    #             for path in path_dict[(s, t)]:
-    #                 for (u, v) in zip(path[:-1], path[1:]):
-    #                     src.append(edge_num+path_i)
-    #                     dst.append(edge2idx_dict[(u, v)])
-
-    #                     if src[-1] not in node2degree_dict:
-    #                         node2degree_dict[src[-1]] = 0
-    #                     node2degree_dict[src[-1]] += 1
-    #                     if dst[-1] not in node2degree_dict:
-    #                         node2degree_dict[dst[-1]] = 0
-    #                     node2degree_dict[dst[-1]] += 1
-    #                 path_i += 1
-
-    #     # edge_index is D^(-0.5)*(adj)*D^(-0.5) without self-loop
-    #     edge_index_values = torch.tensor(
-    #         [1/math.sqrt(node2degree_dict[u]*node2degree_dict[v])
-    #             for u, v in zip(src+dst, dst+src)]).to(self.device)
-    #     edge_index = torch.tensor(
-    #         [src+dst, dst+src], dtype=torch.long).to(self.device)
-    #     p2e = torch.tensor([src, dst], dtype=torch.long).to(self.device)
-    #     p2e[0] -= len(self.G.edges)
-
-    #     return edge_index, edge_index_values, p2e
-
     def init_ADMM(self, data):
         
         paths = data['path']
@@ -738,26 +646,7 @@ class SaTEEnv(object):
                 v.insert(0, [src, tgt])
             self.num_path_node += len(self.flow_values)
             num_path += 1
-
-        # # Initialize lists to store source, destination, and flow values
-        # src, dst, flow_values = [], [], []
-
-        # # Iterate through the flow array to extract non-zero flows
-        # for i in range(tm.shape[0]):
-        #     for j in range(tm.shape[1]):
-        #         if tm[i][j] != 0 and i != j:
-        #             src.append(i)
-        #             dst.append(j)
-        #             flow_values.append(tm[i][j])
-
-        # src, dst = np.nonzero(np.where(np.eye(tm.shape[0]) == 1, 0, tm))
-        # flow_values = tm[src, dst]
-        # self.flow_values = flow_values
-
-        # self.edge_index, self.edge_index_values, self.p2e = \
-        #         self.get_topo_matrix(topo, self.num_path, self.edge_disjoint, self.dist_metric
-
-        # edge nodes' degree, index lookup
+            
         edge2idx_dict = {edge: idx for idx, edge in enumerate(self.G.edges)}
         node2degree_dict = {}
         edge_num = len(self.G.edges)

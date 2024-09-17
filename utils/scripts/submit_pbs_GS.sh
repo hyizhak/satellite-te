@@ -5,11 +5,11 @@
 #PBS -j oe
 #PBS -o run_SaTE.log
 # Queue name:
-#PBS -q ai
+#PBS -q normal
 # Resource requests:
 #PBS -l select=1:ngpus=1
 # Walltime (maximum run time):
-#PBS -l walltime=47:30:00
+#PBS -l walltime=8:30:00
 # Project code:
 #PBS -P 11003765
 

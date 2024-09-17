@@ -17,6 +17,8 @@ import numpy as np
 from lib.spaceTE import SaTEEnv, SaTEActor, SaTE
 from lib.data.starlink.orbit_params import OrbitParams
 from lib.data.starlink.ism import InterShellMode as ISM
+from sklearn.model_selection import train_test_split
+
 
 
 
@@ -34,7 +36,9 @@ def benchmark(args):
     
     train, test, admm_test, supervised, panelized, dummy, loss = args.train, args.test, args.admm_test, args.supervised, args.penalized, args.dummy, args.loss
 
-    print(f'Running SaTE with train={train}, supervised={supervised}, panelized={panelized}, test={test}, admm_test={admm_test}, dummy_path={dummy}, loss={loss}')
+    pruning_to = args.pruning_to
+
+    print(f'Running SaTE with train={train}, supervised={supervised}, panelized={panelized}, test={test}, admm_test={admm_test}, dummy_path={dummy}, loss={loss}, pruning_to={pruning_to}')
     
     device = torch.device(
         f"cuda:{args.devid}" if torch.cuda.is_available() else "cpu")
@@ -101,8 +105,7 @@ def benchmark(args):
         obj=obj, train_sz=trainval_tm_per_topo, val_ratio=val_ratio,
         lr=lr, epoches=epoch_num, batch_sz=batch_size, supervised=supervised, penalized=panelized, flow_lambda=flow_lambda, dummy=dummy, loss=loss,
         coma_sample=sample_num, layers=layers, decoder=decoder_type,
-        rho=rho, admm_step=admm_step_num, curriculum_learning=base
-    )
+        rho=rho, admm_step=admm_step_num, curriculum_learning=base, pruning_to=pruning_to)
 
     params = None
 
@@ -175,7 +178,34 @@ def benchmark(args):
                     label = read_solutions(sol_dir)
                     dataset = dataset[:len(label)]
 
-                    dataset = (dataset, label)
+                    if pruning_to > 0:
+                        fpath = f'/data/projects/11003765/sate/satte/satellite-te/output/isomorphism_pruning/DataSetForSaTE{intensity}_{path.parts[-1]}_spaceTE/models/topoloy-GNN-embeddings/topologies.pkl'
+                        representative_indices = kmeans_embedding(fpath, pruning_to)
+                        train_dataset = [dataset[i] for i in representative_indices]
+                        train_label = [label[i] for i in representative_indices]
+
+                        # duplicate the representative indices to 800
+                        # train_dataset = train_dataset * (800 // len(train_dataset))
+                        # train_label = train_label * (800 // len(train_label))
+
+                        # Remove the representative indices from the dataset and label
+                        remaining_indices = [i for i in range(len(dataset)) if i not in representative_indices]
+
+                        # Filter out the remaining dataset and labels
+                        remaining_dataset = [dataset[i] for i in remaining_indices]
+                        remaining_label = [label[i] for i in remaining_indices]
+
+                        # Now perform the train-test split on the remaining dataset
+                        _, test_dataset, _, test_label = train_test_split(
+                            remaining_dataset, remaining_label, test_size=0.2, random_state=42
+                        )
+
+                        dataset = (train_dataset, test_dataset, train_label, test_label)
+
+                    else:
+                        dataset = (dataset, label)
+
+                    
 
         elif path.parts[-3] == 'starlink_500_fixed_topo':
             intensity = path.parts[-2].split("_")[1]
@@ -417,13 +447,17 @@ def _sate_train_id(
         obj, train_sz, val_ratio,    # training data set
         lr, epoches, batch_sz, supervised, penalized, flow_lambda, dummy, loss, # training hyperparams
         coma_sample, layers, decoder,            # hyperparams
-        rho, admm_step, curriculum_learning):        # ADMM hyperparams
+        rho, admm_step, curriculum_learning, pruning_to):        # ADMM hyperparams
     if supervised:
         train_mode = 'supervised-' + loss
     elif penalized:
         train_mode = 'penaltized-optimization'
     else:
         train_mode = 'RL'
+
+    if pruning_to > 0:
+        train_mode += f'_pruning-to-{pruning_to}'
+
     return f'spaceTE_{train_mode}_' + \
     f'ep-{epoches}_' + f'dummy-path-{dummy}_' \
     f'flow-lambda-{flow_lambda}_' + f'layers-{layers}_base-{curriculum_learning}'
@@ -457,6 +491,8 @@ if __name__ == '__main__':
 
     parser.add_argument("--supervised", action="store_true")
     parser.add_argument("--penalized", action="store_true")
+
+    parser.add_argument("--pruning-to", type=int, default=0)
     
     # output parameters
     parser.add_argument("--output-dir", type=str, default=ARG_OUTPUT_DIR)

@@ -1,6 +1,9 @@
 import os
 import sys
 import pickle
+from sklearn.cluster import KMeans
+import torch
+import numpy as np
 
 _ROOT = f'{os.path.dirname(__file__)}/..'
 
@@ -73,3 +76,46 @@ def read_solutions(file_path, smoothing=0.1):
                 # End of file reached
                 break
     return solutions
+
+def kmeans_embedding(fpath, num_clusters=5):
+
+    # read the pickle file
+    with open(fpath, 'rb') as f:
+        tensor_list = pickle.load(f)
+
+    print("Number of tensors:", len(tensor_list))
+    print("Shape of each tensor:", tensor_list[0].shape)
+
+
+    # 1. Convert the tensor list into a 2D matrix
+    # Assume each tensor has the same shape, e.g., (10, 5)
+    tensor_matrix = torch.stack(tensor_list)  # (100, 10, 5)
+
+    # Flatten the tensors to a 2D matrix of shape (100, 50) to apply KMeans
+    flattened_tensor_matrix = tensor_matrix.view(tensor_matrix.size(0), -1).numpy()
+
+    # 2. Apply sklearn's KMeans clustering
+    kmeans = KMeans(n_clusters=num_clusters, random_state=42)
+    kmeans.fit(flattened_tensor_matrix)
+
+    # 3. Get the cluster labels for each tensor and the cluster centers
+    cluster_labels = kmeans.labels_  # The cluster label for each tensor
+    cluster_centers = kmeans.cluster_centers_  # The centers of each cluster
+
+    # 4. Find the representative tensor for each cluster (the one closest to the cluster center)
+    representative_indices = []
+    for i in range(kmeans.n_clusters):
+        # Get the indices of all tensors that belong to the ith cluster
+        cluster_indices = np.where(cluster_labels == i)[0]
+        
+        # Compute the distance of each tensor to the cluster center
+        distances = np.linalg.norm(flattened_tensor_matrix[cluster_indices] - cluster_centers[i], axis=1)
+        
+        # Find the index of the tensor closest to the cluster center
+        representative_index = cluster_indices[np.argmin(distances)]
+        representative_indices.append(representative_index)
+
+    # 5. Output the indices of the representative tensors for each cluster
+    print("Representative tensor indices for each cluster:", representative_indices)
+
+    return representative_indices

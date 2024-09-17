@@ -128,46 +128,20 @@ class SaTEActor(nn.Module):
         os.makedirs(mdir, exist_ok=True)
         return os.path.join(mdir, 'epoch.pt')
 
-    # def load_model(self):
-    #     """Load from model fname."""
-
-    #     if os.path.exists(self.model_fname):
-    #         print_(f'Loading DeToP model from {self.model_fname}')
-    #         if self.device.type == 'cpu':
-    #             self.load_state_dict(
-    #                 torch.load(
-    #                     self.model_fname, map_location=torch.device('cpu')))
-    #         else:
-    #             self.load_state_dict(torch.load(self.model_fname))
-    #     else:
-    #         print_(f'Creating model {self.model_fname}')
-    #         # weight initialization for neural networks
-    #         self.apply(weight_initialization)
-
-    # def save_model(self):
-    #     """Save from model fname."""
-
-    #     if self.model_save:
-    #         print_(f'Saving SaTE model from {self.model_fname}')
-    #         torch.save(self.state_dict(), self.model_fname)
-
-    def forward(self, feature):
+    def forward(self, feature, need_topo=False):
         """Return mean of normal distribution after forward propagation
 
         Args:
             features: input features including capacity and demands
         """
         x = self.TopoGNN(feature["topo"], feature["capacity"])
-        # x = torch.squeeze(x, 1)
-        # flow = torch.concat([x, feature["traffic"]]).to(self.device)
-        # flow = flow.reshape(-1, 1)
-        # x = self.FlowGNN(flow)
+
+        if need_topo:
+            return x
+        
         feature['problem'].nodes['link'].data['x'] = x
 
         x = self.AlloGNN(feature['problem'], self.env.edge_index_values.unsqueeze(1))
-        # x = x.reshape(
-        #     self.num_path_node//self.num_path,
-        #     self.num_path*(self.FlowGNN.num_layer+1))
         x = x.reshape(
             self.env.num_path_node // self.num_path, -1
         )
@@ -186,7 +160,7 @@ class SaTEActor(nn.Module):
         else:
             return mean, self.std
 
-    def evaluate(self, obs, deterministic=False):
+    def evaluate(self, obs, deterministic=False, need_topo=False):
         """Return raw action before softmax split ratio.
 
         Args:
@@ -195,7 +169,11 @@ class SaTEActor(nn.Module):
         """
 
         # feature = obs.reshape(-1, 1)
-        mean, std = self.forward(obs)
+        if need_topo:
+            mean = self.forward(obs, need_topo=True)
+        else:
+            mean, std = self.forward(obs)
+            
         mean = mean
 
         # test mode

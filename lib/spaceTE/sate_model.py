@@ -44,7 +44,7 @@ class SaTE():
         if self.early_stop:
             self.val_reward = []
 
-    def train(self, num_epoch, batch_size, num_sample, save_model=False):
+    def train(self, num_epoch, batch_size, num_sample, save_model=False, need_topo=False):
         """Train SaTE model.
 
         Args:
@@ -61,6 +61,9 @@ class SaTE():
 
             self.env.reset('train')
 
+            if need_topo:
+                topologies = []
+
             ids = range(0, self.env.idx_stop)
             loop_obj = tqdm(
                 [ids[i:i+batch_size] for i in range(0, len(ids), batch_size)],
@@ -74,42 +77,59 @@ class SaTE():
 
                     # get observation
                     obs = self.env.get_obs()
-                    if self.supervised or self.penalized:
-                        # get action
-                        raw_action, _ = self.actor.evaluate(obs, deterministic=True)
-                        # get loss
-                        split_loss, batch_loss = self.env.compute_loss(raw_action)
-                        satisfied_ratio += split_loss[0]
-                        total_flow += split_loss[1]
-                        panelty += split_loss[2]
-                        loss += batch_loss
+
+                    if need_topo:
+                        topology, _ = self.actor.evaluate(obs, deterministic=True, need_topo=True)
+                        topologies.append(topology.to('cpu').detach())
+
                     else:
-                        # get action
-                        raw_action, log_probability = self.actor.evaluate(obs)
-                        # get reward
-                        reward, info = self.env.step(
-                            raw_action, num_sample=num_sample)
-                        loss += -(log_probability*reward).mean()
 
-                loss.backward()
-                self.actor_optimizer.step()
-                if self.supervised or self.penalized:
-                    loss_list = [satisfied_ratio.item(), total_flow.item(), panelty.item(), loss.item()]
-                else:
-                    loss_list = [satisfied_ratio, total_flow, panelty, loss.item()]
-                self.losses.append([x / len(idx) for x in loss_list])
+                        if self.supervised or self.penalized:
+                            # get action
+                            raw_action, _ = self.actor.evaluate(obs, deterministic=True)
+                            # get loss
+                            split_loss, batch_loss = self.env.compute_loss(raw_action)
+                            satisfied_ratio += split_loss[0]
+                            total_flow += split_loss[1]
+                            panelty += split_loss[2]
+                            loss += batch_loss
+                        else:
+                            # get action
+                            raw_action, log_probability = self.actor.evaluate(obs)
+                            # get reward
+                            reward, info = self.env.step(
+                                raw_action, num_sample=num_sample)
+                            loss += -(log_probability*reward).mean()
 
-            self.draw_loss()
-            # if epoch > 3 * num_epoch // 4:
-            self.save_model(epoch+1)
+                if not need_topo:
+                    loss.backward()
+                    self.actor_optimizer.step()
+                    if self.supervised or self.penalized:
+                        loss_list = [satisfied_ratio.item(), total_flow.item(), panelty.item(), loss.item()]
+                    else:
+                        loss_list = [satisfied_ratio, total_flow, panelty, loss.item()]
+                    self.losses.append([x / len(idx) for x in loss_list])
 
-            # early stop
-            if self.early_stop:
-                self.val()
-                if len(self.val_reward) > 20 and abs(
-                        sum(self.val_reward[-20:-10])/10
-                        - sum(self.val_reward[-10:])/10) < 0.0001:
-                    break
+            if need_topo:
+                model_path = self.actor.model_path(create_dir=True)
+                model_dir = os.path.dirname(model_path)
+                topologies_path = os.path.join(model_dir, 'topologies.pkl')
+                with open(topologies_path, 'wb') as f:
+                    pickle.dump(topologies, f)
+
+            else:
+
+                self.draw_loss()
+                # if epoch > 3 * num_epoch // 4:
+                self.save_model(epoch+1)
+
+                # early stop
+                if self.early_stop:
+                    self.val()
+                    if len(self.val_reward) > 20 and abs(
+                            sum(self.val_reward[-20:-10])/10
+                            - sum(self.val_reward[-10:])/10) < 0.0001:
+                        break
 
     def val(self):
         """Validating SaTE model."""

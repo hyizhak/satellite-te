@@ -59,26 +59,9 @@ class AlloGNN(nn.Module):
         self.full_graph_conv = torch.nn.ModuleDict()
         self.full_graph_conv["conv_1"] = torch.nn.ModuleDict()
         self.full_graph_conv["conv_2"] = torch.nn.ModuleDict()
-        # self.full_graph_conv["conv_3"] = torch.nn.ModuleDict()
-        # self.full_graph_conv["conv_4"] = torch.nn.ModuleDict()
         for edge in canonical_etypes:
             # [('flow', 'uses', 'path'), ('link', 'constitutes', 'path')]
             which_graph_conv = None
-            # if (edge[0] == edge[2]) and (edge[0] != self.category):
-            #     # Self-conv excluding the target node
-            #     which_graph_conv = "conv_1"
-            # elif (edge[0] != edge[2]) and (edge[2] != self.category):
-            #     # Conv from all nodes to others but the target node
-            #     which_graph_conv = "conv_2"
-            # elif (edge[2] == self.category) and (edge[0] != self.category):
-            #     # Conv to the target node
-            #     which_graph_conv = "conv_3"
-            # elif (edge[2] == self.category) and (edge[0] == self.category):
-            #     # Self update
-            #     which_graph_conv = "conv_4"
-            # else:
-            #     NotImplementedError(
-            #         f"Undefined graph convolution for edge {edge}")
 
             if (edge[0] == 'link'):
                 which_graph_conv = "conv_1"
@@ -117,24 +100,6 @@ class AlloGNN(nn.Module):
         Returns:
             torch.Tensor: Allocation.
         """        
-        # if not self.node_embeddings.keys():
-        #     in_nodes = {}
-        #     for ntype in graph:
-        #         in_nodes[ntype] = graph.num_nodes(ntype)
-        #     # Create node embeddings
-        #     for key in self.in_nodes:
-        #         if key == 'link':
-        #             embed = torch.nn.Parameter(
-        #                 self.edge_index_values.unsqueeze(1).repeat(1, self.hidden_size)
-        #             )
-        #             self.node_embeddings[key] = embed
-        #         else: 
-        #             embed = torch.nn.Parameter(
-        #                 torch.Tensor(self.in_nodes[key], self.hidden_size))
-        #             torch.nn.init.xavier_uniform_(
-        #                 embed, gain=torch.nn.init.calculate_gain('relu'))
-        #             self.node_embeddings[key] = embed
-
         # Node embedding update
         for ntype in graph.ntypes:
             graph.nodes[ntype].data["x"] = F.leaky_relu(self.projector[ntype](graph.nodes[ntype].data["x"]))
