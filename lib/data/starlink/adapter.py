@@ -636,6 +636,9 @@ class IridiumAdapter():
             tm_dict = {}
             path_dict = {}
             for flow in FlowSet:
+                src = flow[0] + TotalNum
+                dst = flow[1] + TotalNum
+                d = flow[2]
                 path_edge = ShP.k_Shortest(G, flow[0], flow[1], 5, 999, E, EMap)
                 Path = []
                 for p in path_edge:
@@ -648,8 +651,8 @@ class IridiumAdapter():
                 while len(Path) < 5:
                     Path.append(Path[0])
 
-                tm_dict[f'{flow[0]}, {flow[1]}'] = tm_dict.get(f'{flow[0]}, {flow[1]}', 0) + flow[2]
-                path_dict[f'{flow[0]}, {flow[1]}'] = Path
+                tm_dict[f'{src}, {dst}'] = tm_dict.get(f'{src}, {dst}', 0) + d
+                path_dict[f'{src}, {dst}'] = [[src] + path + [dst] for path in Path]
 
 
             iridium_dataset.append({'graph': E, 'tm': tm_dict, 'path': path_dict, 'data_idx': data_idx})

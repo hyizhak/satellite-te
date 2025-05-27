@@ -747,13 +747,14 @@ class SaTEEnv(object):
             # if self.dummy_path:
             #     for s, d, flow in zip(self.src, self.dst, self.flow_values):
             #         G.add_edge(s, d, capacity = flow)
-            # ## 3. Inter ground station links
-            # for i in range(params.GrdStationNum):
-            #     for j in range(params.GrdStationNum):
-            #         if i == j:
-            #             continue
-            #         G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
-            #         G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
+            
+            ## 3. Inter ground station links
+            for i in range(params.GrdStationNum):
+                for j in range(params.GrdStationNum):
+                    if i == j:
+                        continue
+                    G.add_edge(i + params.Offset5, j + params.Offset5, capacity=0)
+                    G.add_edge(j + params.Offset5, i + params.Offset5, capacity=0)
             
             # print(G.number_of_nodes(), G.number_of_edges())
             # print(len(G))
