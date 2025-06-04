@@ -6,12 +6,12 @@ import argparse
 ROOT = os.path.join(os.path.dirname(__file__), "../..")
 sys.path.append(ROOT)
 
-from lib.data.starlink import StarlinkAdapter, StarlinkMixAdapter, StarlinkReducedAdapter, InterShellMode as ISM
+from lib.data.starlink import StarlinkAdapter, StarlinkMixAdapter, StarlinkReducedAdapter, StarlinkHARPAdapter, StarlinkReducedHARPAdapter, InterShellMode as ISM
 
 # ========== Configurations ==========
 ARG_TOPO_FILE_TEMPLATE = 'StarLink_DataSetForAgent{}_5000_{}.pkl'
-FILE_VOLUME = ['A', 'B']
-ARG_DATA_PER_TOPO = 5000
+FILE_VOLUME = ['A']
+ARG_DATA_PER_TOPO = 200
 ARG_PARALLEL = None
 # ====================================
 
@@ -23,6 +23,7 @@ parser.add_argument('--input-topo-file-template', type=str, default=ARG_TOPO_FIL
 parser.add_argument('--intensity', type=str)
 parser.add_argument('--reduced', type=int)
 parser.add_argument('--teal_form', action="store_true")
+parser.add_argument('--harp_form', action="store_true")
 parser.add_argument('--data-per-topo', type=int, default=ARG_DATA_PER_TOPO)
 
 parser.add_argument('--inter-shell-mode', type=str, required=True)
@@ -77,25 +78,46 @@ elif args.reduced is not None:
         case 2:
             size = 1500
 
-
-    StarlinkReducedAdapter(
-        input_path=args.input_path,
-        topo_file_template=args.input_topo_file_template.format(args.intensity, f'Size{size}'),
-        data_per_topo=args.data_per_topo,
-        ism=args.ism,
-        reduced=args.reduced,
-        teal_form=args.teal_form,
-        parallel=args.parallel
-    ).adapt(output_path)
+    if args.harp_form:
+        output_path = args.output_path
+        StarlinkReducedHARPAdapter(
+            input_path=args.input_path,
+            topo_file_template=args.input_topo_file_template.format(args.intensity, f'Size{size}'),
+            data_per_topo=args.data_per_topo,
+            ism=args.ism,
+            reduced=args.reduced,
+            parallel=args.parallel
+        ).adapt(output_path)
+    else:
+        StarlinkReducedAdapter(
+            input_path=args.input_path,
+            topo_file_template=args.input_topo_file_template.format(args.intensity, f'Size{size}'),
+            data_per_topo=args.data_per_topo,
+            ism=args.ism,
+            reduced=args.reduced,
+            teal_form=args.teal_form,
+            parallel=args.parallel
+        ).adapt(output_path)
 
 else:
-    output_path = os.path.join(args.output_path, args.prefix, args.inter_shell_mode)
-        
-    StarlinkAdapter(
-        input_path=args.input_path,
-        topo_file_template=args.input_topo_file_template.format(args.intensity, '{}'),
-        file_volume=FILE_VOLUME,
-        data_per_topo=args.data_per_topo,
-        ism=args.ism,
-        parallel=args.parallel
-    ).adapt(output_path)
+    if args.harp_form:
+        output_path = args.output_path
+        StarlinkHARPAdapter(
+            input_path=args.input_path,
+            topo_file_template=args.input_topo_file_template.format(args.intensity, '{}'),
+            file_volume=FILE_VOLUME,
+            data_per_topo=args.data_per_topo,
+            ism=args.ism,
+            parallel=args.parallel
+        ).adapt(output_path)
+    else:
+        output_path = os.path.join(args.output_path, args.prefix, args.inter_shell_mode)
+            
+        StarlinkAdapter(
+            input_path=args.input_path,
+            topo_file_template=args.input_topo_file_template.format(args.intensity, '{}'),
+            file_volume=FILE_VOLUME,
+            data_per_topo=args.data_per_topo,
+            ism=args.ism,
+            parallel=args.parallel
+        ).adapt(output_path)

@@ -127,14 +127,9 @@ class PathFormulation(AbstractFormulation):
             or self._objective == Objective.COMPUTE_DEMAND_SCALE_FACTOR
         ):
             self._print("{} objective".format(self._objective))
-
-            if self._objective == Objective.MIN_MAX_LINK_UTIL:
-                max_link_util_var = m.addVar(
-                    vtype=GRB.CONTINUOUS, lb=0.0, ub=1.0, name="z"
-                )
-            else:
-                # max link util can exceed 1.0
-                max_link_util_var = m.addVar(vtype=GRB.CONTINUOUS, lb=0.0, name="z")
+                
+            # max link util can exceed 1.0
+            max_link_util_var = m.addVar(vtype=GRB.CONTINUOUS, lb=0.0, name="z")
 
             m.setObjective(max_link_util_var, GRB.MINIMIZE)
             # Add edge util constraints

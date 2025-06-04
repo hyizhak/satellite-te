@@ -18,3 +18,4 @@ TOPOLOGY_SCRIPT=${PROJECT_ROOT}/run/topology-embedding.py
 IRIDIUM_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/iridium/adapter.py
 IRIDIUM_NEW_FORM_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/iridium/adapt_iridium.py
 STARLINK_ADAPTER_SCRIPT=${PROJECT_ROOT}/utils/starlink/adapt_starlink.py
+HARP_DIR=/home/users/nus/e1310988/HARP

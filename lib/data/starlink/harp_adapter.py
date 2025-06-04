@@ -25,9 +25,9 @@ iridium_isl_cap = 25
 iridium_uplink_cap = 100
 iridium_downlink_cap = 100
 
-def add_edge(links, src, dst, cap):
+def add_edge(links, src, dst, capacity):
     links.append({
-        "capacity": cap,
+        "capacity": capacity,
         "source": src,
         "target": dst
     })
@@ -202,7 +202,7 @@ class StarlinkHARPAdapter():
                 "links": links
             }
 
-            with open(f"{output_path}/topologies/starlink_4000/t{k}.json", "wb") as f:
+            with open(f"{output_path}/topologies/starlink_4000/t{k}.json", "w") as f:
                 json.dump(topo_dict, f)
 
              # 3. Create traffic matrices
@@ -235,13 +235,13 @@ class StarlinkHARPAdapter():
             # 2) Build the NumPy arrays
             #    - pairs_array: shape (num_pairs,2)
             #    - traffic_array: shape (num_pairs,1)
-            pairs_array  = np.array(pairs, dtype=np.int32)
+            pairs_array = np.array(pairs, dtype=np.int32)
             traffic_array = np.array([[tm_dict[p]] for p in pairs], dtype=np.float32)
 
-            with open(f"{output_path}/pairs/starlink_4000/{k}.pkl", "wb") as f:
-                pickle.dump(pairs_array, f)
-            with open(f"{output_path}/traffic_matrices/starlink_4000/{k}.pkl", "wb") as f:
-                pickle.dump(traffic_array, f)
+            with open(f"{output_path}/pairs/starlink_4000/t{k}.pkl", "wb") as f:
+                pickle.dump(list(pairs_array), f)
+            with open(f"{output_path}/traffic_matrices/starlink_4000/t{k}.pkl", "wb") as f:
+                pickle.dump(list(traffic_array), f)
 
             with open(f"{output_path}/manifest/starlink_4000_manifest.txt", "a") as f:
                 f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
@@ -258,6 +258,14 @@ class StarlinkHARPAdapter():
 
             with open(f"{output_path}/topologies/paths_dict/starlink_4000_5_paths_dict_cluster_{k}.pkl", "wb") as f:
                 pickle.dump(edge_paths, f)
+
+            os.makedirs(f"{output_path}/results/starlink_4000/5sp/{k}", exist_ok=True)
+
+            with open(f"{output_path}/results/starlink_4000/5sp/{k}/filenames.txt", "a") as f:
+                f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
+
+            with open(f"{output_path}/results/starlink_4000/5sp/{k}/optimal_values.txt", "a") as f:
+                f.write(f"1.0\n") 
 
         file.close()
 
@@ -388,7 +396,7 @@ class StarlinkReducedHARPAdapter():
                     "links": links
                 }
 
-                with open(f"{output_path}/topologies/starlink_{size}/t{k}.json", "wb") as f:
+                with open(f"{output_path}/topologies/starlink_{size}/t{k}.json", "w") as f:
                     json.dump(topo_dict, f)
 
                 tm_dict = {}
@@ -414,35 +422,43 @@ class StarlinkReducedHARPAdapter():
                     path_dict[(src, dst)] = [[src] + path + [dst] for path in paths]
                     tm_dict[(src, dst)] = tm_dict.get((src, dst), 0) + d
 
-            # 1) Sort the pairs to fix an ordering
-            pairs = sorted(path_dict.keys())   # e.g. [(0,1), (0,2), (1,2), …]
+                # 1) Sort the pairs to fix an ordering
+                pairs = sorted(path_dict.keys())   # e.g. [(0,1), (0,2), (1,2), …]
 
-            # 2) Build the NumPy arrays
-            #    - pairs_array: shape (num_pairs,2)
-            #    - traffic_array: shape (num_pairs,1)
-            pairs_array  = np.array(pairs, dtype=np.int32)
-            traffic_array = np.array([[tm_dict[p]] for p in pairs], dtype=np.float32)
+                # 2) Build the NumPy arrays
+                #    - pairs_array: shape (num_pairs,2)
+                #    - traffic_array: shape (num_pairs,1)
+                pairs_array = np.array(pairs, dtype=np.int32)
+                traffic_array = np.array([[tm_dict[p]] for p in pairs], dtype=np.float32)
 
-            with open(f"{output_path}/pairs/starlink_{size}/{k}.pkl", "wb") as f:
-                pickle.dump(pairs_array, f)
-            with open(f"{output_path}/traffic_matrices/starlink_{size}/{k}.pkl", "wb") as f:
-                pickle.dump(traffic_array, f)
+                with open(f"{output_path}/pairs/starlink_{size}/t{k}.pkl", "wb") as f:
+                    pickle.dump(list(pairs_array), f)
+                with open(f"{output_path}/traffic_matrices/starlink_{size}/t{k}.pkl", "wb") as f:
+                    pickle.dump(list(traffic_array), f)
 
-            with open(f"{output_path}/manifest/starlink_{size}_manifest.txt", "a") as f:
-                f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
+                with open(f"{output_path}/manifest/starlink_{size}_manifest.txt", "a") as f:
+                    f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
 
-            # 3) Paths
-            edge_paths = {}
-            for pair, paths in path_dict.items():
-                ep = []
-                for node_seq in paths:
-                    # zip adjacent nodes into edges
-                    edges = list(zip(node_seq[:-1], node_seq[1:]))
-                    ep.append(edges)
-                edge_paths[pair] = ep
+                # 3) Paths
+                edge_paths = {}
+                for pair, paths in path_dict.items():
+                    ep = []
+                    for node_seq in paths:
+                        # zip adjacent nodes into edges
+                        edges = list(zip(node_seq[:-1], node_seq[1:]))
+                        ep.append(edges)
+                    edge_paths[pair] = ep
 
-            with open(f"{output_path}/topologies/paths_dict/starlink_{size}_5_paths_dict_cluster_{k}.pkl", "wb") as f:
-                pickle.dump(edge_paths, f)
+                with open(f"{output_path}/topologies/paths_dict/starlink_{size}_5_paths_dict_cluster_{k}.pkl", "wb") as f:
+                    pickle.dump(edge_paths, f)
+
+                os.makedirs(f"{output_path}/results/starlink_{size}/5sp/{k}", exist_ok=True)
+
+                with open(f"{output_path}/results/starlink_{size}/5sp/{k}/filenames.txt", "a") as f:
+                    f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
+
+                with open(f"{output_path}/results/starlink_{size}/5sp/{k}/optimal_values.txt", "a") as f:
+                    f.write(f"1.0\n") 
 
 
 class IridiumHARPAdapter():
@@ -502,7 +518,7 @@ class IridiumHARPAdapter():
                 "links": links
             }
 
-            with open(f"{output_path}/topologies/iridium/t{data_idx}.json", "wb") as f:
+            with open(f"{output_path}/topologies/iridium/t{data_idx}.json", "w") as f:
                 json.dump(topo_dict, f)
 
             G = np.zeros((TotalNum,TotalNum)) + 999
@@ -540,13 +556,13 @@ class IridiumHARPAdapter():
             # 2) Build the NumPy arrays
             #    - pairs_array: shape (num_pairs,2)
             #    - traffic_array: shape (num_pairs,1)
-            pairs_array  = np.array(pairs, dtype=np.int32)
+            pairs_array = np.array(pairs, dtype=np.int32)
             traffic_array = np.array([[tm_dict[p]] for p in pairs], dtype=np.float32)
 
-            with open(f"{output_path}/pairs/iridium/{data_idx}.pkl", "wb") as f:
-                pickle.dump(pairs_array, f)
-            with open(f"{output_path}/traffic_matrices/iridium/{data_idx}.pkl", "wb") as f:
-                pickle.dump(traffic_array, f)
+            with open(f"{output_path}/pairs/iridium/t{data_idx}.pkl", "wb") as f:
+                pickle.dump(list(pairs_array), f)
+            with open(f"{output_path}/traffic_matrices/iridium/t{data_idx}.pkl", "wb") as f:
+                pickle.dump(list(traffic_array), f)
 
             with open(f"{output_path}/manifest/iridium_manifest.txt", "a") as f:
                 f.write(f"t{data_idx}.json,t{data_idx}.pkl,t{data_idx}.pkl\n")
@@ -563,5 +579,13 @@ class IridiumHARPAdapter():
 
             with open(f"{output_path}/topologies/paths_dict/iridium_5_paths_dict_cluster_{data_idx}.pkl", "wb") as f:
                 pickle.dump(edge_paths, f)
+
+            os.makedirs(f"{output_path}/results/iridium/5sp/{data_idx}", exist_ok=True)
+
+            with open(f"{output_path}/results/iridium/5sp/{data_idx}/filenames.txt", "a") as f:
+                f.write(f"t{data_idx}.json,t{data_idx}.pkl,t{data_idx}.pkl\n") 
+
+            with open(f"{output_path}/results/iridium/5sp/{data_idx}/optimal_values.txt", "a") as f:
+                f.write(f"1.0\n")
         
         file.close()
