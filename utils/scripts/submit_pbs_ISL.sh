@@ -11,7 +11,7 @@
 # Walltime (maximum run time):
 #PBS -l walltime=23:30:00
 # Project code:
-#PBS -P personal-e1310988
+#PBS -P your_project_code_here
 
 # Load Singularity module
 module load singularity

@@ -20,7 +20,7 @@ import lib.data.starlink.ECMP as Baseline1
 def ECMP(intensity, mode) :
     # ========= Parameters to change ==========
     DataSetSize = 100 #
-    fileName = open(f"/data/projects/11003765/sate/input/starlink/DataSetForSaTE{intensity}/StarLink_DataSetForAgent{intensity}_5000_A.pkl", "rb")
+    fileName = open(f"./input/starlink/DataSetForSaTE{intensity}/StarLink_DataSetForAgent{intensity}_5000_A.pkl", "rb")
     InterConnectedMode = mode #'GrdStation' # 'ISL'
     ISLCap = 50*4
     UpLinkCap = 200*4

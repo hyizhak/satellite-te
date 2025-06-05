@@ -10,7 +10,7 @@ _ROOT = f'{os.path.dirname(__file__)}/..'
 # ========== Benchmarking arguments
 # Input and output
 ARG_PROBLEM_PATH = f'{_ROOT}/input/IridiumDataSet14day20sec_Int5'
-SOLUTION_PATH = f'/data/projects/11003765/sate/input/lp_solutions'
+SOLUTION_PATH = f'{_ROOT}/input/lp_solutions'
 ARG_TOPO_NUM = 10
 ARG_OUTPUT_DIR = f'{_ROOT}/output'
 ARG_OUTPUT_PREFIX = None

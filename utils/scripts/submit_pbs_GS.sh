@@ -9,9 +9,9 @@
 # Resource requests:
 #PBS -l select=1:ngpus=1
 # Walltime (maximum run time):
-#PBS -l walltime=8:30:00
+#PBS -l walltime=23:30:00
 # Project code:
-#PBS -P 11003765
+#PBS -P your_project_code_here
 
 # Load Singularity module
 module load singularity

@@ -4,13 +4,13 @@ source $(dirname $(readlink -f $0))/env
 RAW_INPUT_DIR=${INPUT_DIR}/raw/starlink
 
 for intensity in 25 50 75 100; do
-    nohup python ${STARLINK_ADAPTER_SCRIPT} \
+    python ${STARLINK_ADAPTER_SCRIPT} \
         --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \
         --output-path ${INPUT_DIR}/starlink \
         --intensity ${intensity} \
         --inter-shell-mode "GrdStation"
     
-    nohup python ${STARLINK_ADAPTER_SCRIPT} \
+    python ${STARLINK_ADAPTER_SCRIPT} \
         --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \
         --output-path ${INPUT_DIR}/starlink \
         --intensity ${intensity} \

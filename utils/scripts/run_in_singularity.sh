@@ -12,7 +12,7 @@ CURRENT_DIR=$(pwd)
 source $(dirname $(readlink -f $0))/env
 
 # Define the path to the Singularity image
-SINGULARITY_IMAGE=${PROJECT_ROOT}/sing_image/sate_image_ot_latest.sif
+SINGULARITY_IMAGE=${PROJECT_ROOT}/sing_image/sate_image_latest.sif
 
 # script to run
 # SCRIPT_TO_RUN=adapt_starlink.sh

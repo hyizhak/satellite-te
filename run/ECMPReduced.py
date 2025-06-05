@@ -21,7 +21,7 @@ def ECMP(reduced, mode):
     # ========= Parameters to change ==========
     DataSetSize = 100 #
     size = 500 if int(reduced) == 8 else 1500
-    fileName = open(f"/home/azureuser/cloudfiles/code/Users/e1310988/satellite-te/raw_data/starlink_{size}/StarLink_DataSetForAgent100_5000_Size{size}.pkl", "rb")
+    fileName = open(f"./raw_data/starlink_{size}/StarLink_DataSetForAgent100_5000_Size{size}.pkl", "rb")
     InterConnectedMode = mode #'GrdStation' # 'ISL'
     ISLCap = 50 * 4
     UpLinkCap = 200 * 4
