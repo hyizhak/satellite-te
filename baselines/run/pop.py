@@ -40,7 +40,7 @@ def benchmark(args):
     test_log_dir = AssetManager.test_log_dir(work_dir, create_dir=True)
     output_csv = os.path.join(test_log_dir, f'pop_topo-{topo_num}_tsz-{test_size_per_topo}.csv')
     num_paths, edge_disjoint, dist_metric = (5, False, "min-hop")
-    paths_fname = "/home/azureuser/cloudfiles/code/Users/e1310988/satellite-te/input/starlink/DataSetForSaTE25/GrdStation/StarLink_DataSetForAgent25_5000_A.pkl"
+    paths_fname = "/home/azureuser/cloudfiles/satellite-te/input/starlink/DataSetForSaTE25/GrdStation/StarLink_DataSetForAgent25_5000_A.pkl"
     with open(paths_fname, 'rb') as file:
         data = pickle.load(file)
 

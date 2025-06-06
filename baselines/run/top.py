@@ -38,9 +38,9 @@ def benchmark(args):
     
     logging.info("LPTop solver")
     if size == 5000:
-        paths_fname = f"/home/azureuser/cloudfiles/code/Users/e1310988/satellite-te/input/starlink/DataSetForSaTE{intensity}/{mode}/StarLink_DataSetForAgent{intensity}_10_A.pkl"
+        paths_fname = f"/home/azureuser/cloudfiles/satellite-te/input/starlink/DataSetForSaTE{intensity}/{mode}/StarLink_DataSetForAgent{intensity}_5000_A.pkl"
     else:
-        paths_fname = f'/home/azureuser/cloudfiles/code/te_problems/dataset_sample/{mode}/StarLink_DataSetForAgent100_10_Size{size}.pkl'
+        paths_fname = f'/home/azureuser/cloudfiles//satellite-te/input/{mode}/StarLink_DataSetForAgent100_5000_Size{size}.pkl'
     with open(paths_fname, 'rb') as file:
         data = pickle.load(file)
     logging.info(f"Loaded data from {paths_fname}")
