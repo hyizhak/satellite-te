@@ -259,14 +259,6 @@ class StarlinkHARPAdapter():
             with open(f"{output_path}/topologies/paths_dict/starlink_4000_5_paths_dict_cluster_{k}.pkl", "wb") as f:
                 pickle.dump(edge_paths, f)
 
-            os.makedirs(f"{output_path}/results/starlink_4000/5sp/{k}", exist_ok=True)
-
-            with open(f"{output_path}/results/starlink_4000/5sp/{k}/filenames.txt", "a") as f:
-                f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
-
-            with open(f"{output_path}/results/starlink_4000/5sp/{k}/optimal_values.txt", "a") as f:
-                f.write(f"1.0\n") 
-
         file.close()
 
 class StarlinkReducedHARPAdapter():
@@ -452,14 +444,6 @@ class StarlinkReducedHARPAdapter():
                 with open(f"{output_path}/topologies/paths_dict/starlink_{size}_5_paths_dict_cluster_{k}.pkl", "wb") as f:
                     pickle.dump(edge_paths, f)
 
-                os.makedirs(f"{output_path}/results/starlink_{size}/5sp/{k}", exist_ok=True)
-
-                with open(f"{output_path}/results/starlink_{size}/5sp/{k}/filenames.txt", "a") as f:
-                    f.write(f"t{k}.json,t{k}.pkl,t{k}.pkl\n") 
-
-                with open(f"{output_path}/results/starlink_{size}/5sp/{k}/optimal_values.txt", "a") as f:
-                    f.write(f"1.0\n") 
-
 
 class IridiumHARPAdapter():
 
@@ -579,13 +563,5 @@ class IridiumHARPAdapter():
 
             with open(f"{output_path}/topologies/paths_dict/iridium_5_paths_dict_cluster_{data_idx}.pkl", "wb") as f:
                 pickle.dump(edge_paths, f)
-
-            os.makedirs(f"{output_path}/results/iridium/5sp/{data_idx}", exist_ok=True)
-
-            with open(f"{output_path}/results/iridium/5sp/{data_idx}/filenames.txt", "a") as f:
-                f.write(f"t{data_idx}.json,t{data_idx}.pkl,t{data_idx}.pkl\n") 
-
-            with open(f"{output_path}/results/iridium/5sp/{data_idx}/optimal_values.txt", "a") as f:
-                f.write(f"1.0\n")
         
         file.close()
