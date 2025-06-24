@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr 15 14:21:49 2024
-
-@author: WH
-
-Version: 2.0
-"""
 from .ism import InterShellMode as ISM
 from . import loop_grid_pathform as LGP
 

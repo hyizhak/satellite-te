@@ -1,4 +1,4 @@
-from .utils import uni_rand
+# from .utils import uni_rand
 from itertools import tee
 from sys import maxsize
 from collections import defaultdict
@@ -257,35 +257,35 @@ def commodity_gen(mat, with_val=True, skip_zero=True):
                 yield x, y
 
 
-def transform_for_network_simplex(problem, vis=False):
+# def transform_for_network_simplex(problem, vis=False):
 
-    G = problem.G.copy()
-    node_index = len(G.nodes)
-    for _, (s_k, t_k, d_k) in problem.commodity_list:
-        # First add new source and sink nodes to the graph
-        new_src, new_sink = node_index, node_index + 1
-        if vis:
-            src_pos, sink_pos = G.nodes[s_k]["pos"], G.nodes[t_k]["pos"]
-            new_src_pos = src_pos[0] + uni_rand(-2, 0), src_pos[-1] + uni_rand(-2, 0)
-            new_sink_pos = sink_pos[0] - uni_rand(-2, 0), sink_pos[-1] - uni_rand(-2, 0)
+#     G = problem.G.copy()
+#     node_index = len(G.nodes)
+#     for _, (s_k, t_k, d_k) in problem.commodity_list:
+#         # First add new source and sink nodes to the graph
+#         new_src, new_sink = node_index, node_index + 1
+#         if vis:
+#             src_pos, sink_pos = G.nodes[s_k]["pos"], G.nodes[t_k]["pos"]
+#             new_src_pos = src_pos[0] + uni_rand(-2, 0), src_pos[-1] + uni_rand(-2, 0)
+#             new_sink_pos = sink_pos[0] - uni_rand(-2, 0), sink_pos[-1] - uni_rand(-2, 0)
 
-        G.add_node(new_src, demand=-d_k, label="{}: {}".format(new_src, -d_k))
-        G.add_node(new_sink, demand=d_k, label="{}: {}".format(new_sink, d_k))
-        if vis:
-            G[new_src]["pos"] = new_src_pos
-            G[new_sink]["pos"] = new_sink_pos
+#         G.add_node(new_src, demand=-d_k, label="{}: {}".format(new_src, -d_k))
+#         G.add_node(new_sink, demand=d_k, label="{}: {}".format(new_sink, d_k))
+#         if vis:
+#             G[new_src]["pos"] = new_src_pos
+#             G[new_sink]["pos"] = new_sink_pos
 
-        # Then add edge in both directions connecting new source to old with infinite capacity
-        G.add_edge(new_src, s_k, weight=1, capacity=maxsize)
-        G.add_edge(s_k, new_src, weight=1, capacity=maxsize)
+#         # Then add edge in both directions connecting new source to old with infinite capacity
+#         G.add_edge(new_src, s_k, weight=1, capacity=maxsize)
+#         G.add_edge(s_k, new_src, weight=1, capacity=maxsize)
 
-        # Same for sink
-        G.add_edge(new_sink, t_k, capacity=maxsize)
-        G.add_edge(t_k, new_sink, capacity=maxsize)
+#         # Same for sink
+#         G.add_edge(new_sink, t_k, capacity=maxsize)
+#         G.add_edge(t_k, new_sink, capacity=maxsize)
 
-        node_index += 2
+#         node_index += 2
 
-    return G
+#     return G
 
 
 # Takes one or more sol_dicts for a given problem; determines if the solution

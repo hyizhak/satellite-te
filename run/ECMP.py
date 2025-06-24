@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr 10 09:57:26 2024
-
-@author: WHH
-"""
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))

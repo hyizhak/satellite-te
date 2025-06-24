@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Apr 24 14:27:49 2024
-
-@author: admin
-"""
 from . import SPOnGrid as SPG
 from .ism import InterShellMode as ISM
 

@@ -153,7 +153,7 @@ def benchmark(args):
 
                     label = []
                     for intensity in [25, 50, 75, 100]:
-                        sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-1000_solutions.pkl')
+                        sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-5000_solutions.pkl')
                         label.extend(read_solutions(sol_dir))
                     
                     dataset = dataset[:len(label)]
@@ -172,7 +172,7 @@ def benchmark(args):
                     dataset = dataset[:1000]    
 
                 if supervised:
-                    sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-1000_solutions.pkl')
+                    sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-5000_solutions.pkl')
                     label = read_solutions(sol_dir)
                     dataset = dataset[:len(label)]
 

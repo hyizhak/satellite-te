@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Apr  8 13:42:10 2024
-
-@author: Hao Wu
-"""
 import numpy as np
 from astropy import units as u
 import math

@@ -156,7 +156,7 @@ def benchmark(args):
 
                     label = []
                     for intensity in [25, 50, 75, 100]:
-                        sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-1000_solutions.pkl')
+                        sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-5000_solutions.pkl')
                         label.extend(read_solutions(sol_dir))
                     
                     dataset = dataset[:len(label)]
@@ -174,12 +174,12 @@ def benchmark(args):
                     dataset = pickle.load(file)
 
                 if supervised:
-                    sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-1000_solutions.pkl')
+                    sol_dir = os.path.join(SOLUTION_PATH, f'Gurobi_size-5000_mode-{path.parts[-1]}_intensity-{intensity}_volume-5000_solutions.pkl')
                     label = read_solutions(sol_dir)
                     dataset = dataset[:len(label)]
 
                     if pruning_to > 0:
-                        fpath = f'/data/projects/11003765/sate/satte/satellite-te/output/isomorphism_pruning/DataSetForSaTE{intensity}_{path.parts[-1]}_spaceTE/models/topoloy-GNN-embeddings/topologies.pkl'
+                        fpath = f'./topoloy-GNN-embeddings/topologies.pkl'
                         representative_indices = kmeans_embedding(fpath, pruning_to)
                         train_dataset = [dataset[i] for i in representative_indices]
                         train_label = [label[i] for i in representative_indices]

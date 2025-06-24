@@ -328,3 +328,32 @@ def check_feasibility(problem, sol_dicts):
 
     bottleneck_edges = sorted(edge_percent_cap_remaining, key=lambda x: x[-1])
     print("Top 5 Bottleneck edges", bottleneck_edges[:5])
+
+def update_from_sols(G, sol_dict, paths_dict):
+    used_caps = defaultdict(float)
+
+    for (src, dst, demand), flows in sol_dict.items():
+        for path_idx, frac in flows:
+            # Calculate the flow amount based on the fraction and demand
+            flow_amount = frac * demand
+
+            # Get the path for the given source, destination, and path index
+            path = paths_dict[(src, dst)][path_idx]
+            # Update the capacities along the path
+            for u, v in zip(path[:-1], path[1:]):
+                used_caps[(u, v)] += flow_amount
+
+    for (u, v), used in used_caps.items():
+        G[u][v]['capacity'] -= used
+
+    return G
+
+def compute_used_caps(sol_dict, paths_dict):
+    used = defaultdict(float)
+    for (s, t, D), flows in sol_dict.items():
+        for p_idx, frac in flows:
+            f = frac * D
+            path = paths_dict[(s, t)][p_idx]
+            for u, v in zip(path[:-1], path[1:]):
+                used[(u, v)] += f
+    return used

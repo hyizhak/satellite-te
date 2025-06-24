@@ -27,10 +27,10 @@ fi
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Run the Singularity container with mounted directories
-singularity exec ${GPU_FLAG} --bind ${INPUT_DIR}:${INPUT_DIR} --bind ${PROJECT_ROOT}:${PROJECT_ROOT} ${SINGULARITY_IMAGE} bash -c "
-  source ${PROJECT_ROOT}/utils/scripts/env && \
-  conda init && \
-  source ~/.bashrc && \
-  conda activate satte && \
-  ${SCRIPTS_DIR}/${SCRIPT_TO_RUN}
-" > ${SCRIPTS_DIR}/log/${SCRIPT_TO_RUN}_${PBS_JOBID}_${TIMESTAMP}.log 2>&1
+singularity exec --cleanenv ${GPU_FLAG} \
+  --bind ${INPUT_DIR}:${INPUT_DIR} \
+  --bind ${PROJECT_ROOT}:${PROJECT_ROOT} \
+  ${SINGULARITY_IMAGE} \
+  /opt/conda/bin/conda run -n satte --live-stream --no-capture-output \
+    "${SCRIPTS_DIR}/${SCRIPT_TO_RUN}" \
+  > ${SCRIPTS_DIR}/log/${SCRIPT_TO_RUN}_${PBS_JOBID}_${TIMESTAMP}.log 2>&1

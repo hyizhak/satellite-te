@@ -229,7 +229,6 @@ class SaTEEnv(object):
             reward = self.take_action(raw_action, num_sample)
         else:
             start_time = time.time()
-            action = self.transform_raw_action(raw_action)
             # # add one column in the front if action is for 5 paths
             # if raw_action.shape[1] != self.num_path:
             #     raw_action = torch.cat(
@@ -237,6 +236,7 @@ class SaTEEnv(object):
             #         dim=1)
             # action = raw_action.flatten() * self.obs['traffic']
             if self.obj.endswith('total_flow'):
+                action = self.transform_raw_action(raw_action)
                 # total flow require no constraint violation
                 # remove first column of action
                 if self.dummy_path:
@@ -253,6 +253,8 @@ class SaTEEnv(object):
                         dim=1)
                     action = action.flatten()
                 action = self.round_action(action)
+
+            action = self.transform_raw_action(raw_action, enforce_equal_constraints=True)
             info['pre_runtime'] = self.pre_runtime
             info['post_runtime'] = time.time() - start_time
             info['sol_mat'] = self.extract_sol_mat(action)
@@ -337,7 +339,7 @@ class SaTEEnv(object):
                 action[self.p2e[0]], self.p2e[1], dim_size = self.num_edge_node
                 )/self.obs['capacity']).max()
 
-    def transform_raw_action(self, raw_action, prob=False):
+    def transform_raw_action(self, raw_action, prob=False, enforce_equal_constraints=False):
         """Return network flow allocation as action.
 
         Args:
@@ -350,19 +352,20 @@ class SaTEEnv(object):
         # translate ML output to split ratio through softmax
         # raw_action = raw_action.exp()
         # raw_action = raw_action / raw_action.sum(axis=-1)[:, None]
-        # raw_action = F.softmax(raw_action, dim=-1)
+        if enforce_equal_constraints:
+            raw_action = F.softmax(raw_action, dim=-1)
+        else: 
+            raw_action = F.sigmoid(raw_action)
 
-        raw_action = F.sigmoid(raw_action)
+            # Compute row sums and exceed mask
+            row_sums = raw_action.sum(dim=-1)
+            exceed_mask = row_sums > 1
 
-        # Compute row sums and exceed mask
-        row_sums = raw_action.sum(dim=-1)
-        exceed_mask = row_sums > 1
+            # Create a new tensor to hold the normalized values without in-place modification
+            normalized_action = raw_action / row_sums.unsqueeze(-1).clamp(min=1)  # Normalizes only where sums exceed 1
 
-        # Create a new tensor to hold the normalized values without in-place modification
-        normalized_action = raw_action / row_sums.unsqueeze(-1).clamp(min=1)  # Normalizes only where sums exceed 1
-
-        # Blend the normalized actions back into the original raw_action tensor
-        raw_action = torch.where(exceed_mask.unsqueeze(-1), normalized_action, raw_action)
+            # Blend the normalized actions back into the original raw_action tensor
+            raw_action = torch.where(exceed_mask.unsqueeze(-1), normalized_action, raw_action)
 
         if prob:
             return raw_action

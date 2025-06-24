@@ -1,9 +1,4 @@
-# -*- coding: utf-8 -*-
 """
-Created on Tue Feb 21 20:26:26 2023
-
-@author: WHH
-
 Reference: https://en.wikipedia.org/wiki/Yen%27s_algorithm
 """
 import numpy as np
