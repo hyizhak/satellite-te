@@ -42,8 +42,8 @@ satellite-te/
 ├── run/                            # Main classes scripts call
 ├── utils/
 │   └── scripts/
-│       ├── run_GS.sh               # Script for experiments on satellite linked with Ground station
-│       ├── run_ISL.sh              # Script for experiments on satellite linked with laser link
+│       ├── run_GS.sh               # Script for experiments on satellites linked with ground relays
+│       ├── run_ISL.sh              # Script for experiments on satellites linked with laser links
 │       ├── run_in_singularity.sh   # Script to facilitate experiments with singularity images
 │       ├── log/                    # Logs from tasks on NSCC clusters             
 │       └── ...
