@@ -7,12 +7,9 @@ source $(dirname $(readlink -f $0))/env
 #         --output-path ${OUTPUT_DIR}
 # done
 
-RAW_INPUT_DIR=${INPUT_DIR}/raw
-OUTPUT_DIR=${INPUT_DIR}/iridium/new_form
-
 for intensity in 15; do
     python ${IRIDIUM_NEW_FORM_ADAPTER_SCRIPT} \
         --input-path ${RAW_INPUT_DIR} \
-        --output-path ${OUTPUT_DIR} \
+        --output-path ${INPUT_DIR}/iridium/new_form \
         --intensity ${intensity} 
 done

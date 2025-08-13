@@ -1,8 +1,6 @@
 #!/bin/bash
 source $(dirname $(readlink -f $0))/env
 
-RAW_INPUT_DIR=${INPUT_DIR}/raw/starlink
-
 for intensity in 25 50 75 100; do
     python ${STARLINK_ADAPTER_SCRIPT} \
         --input-path ${RAW_INPUT_DIR}/DataSetForSaTE${intensity} \

@@ -3,7 +3,8 @@ PROJECT_ROOT=$(dirname $(readlink -f $0))/../..
 # AZURE_PROBLEM_DIR=/home/azureuser/cloudfiles/code/te_problems
 # ALL_PROBLEM_LIST=$(cd $AZURE_PROBLEM_DIR; ls)
 
-INPUT_DIR=.../input
+RAW_INPUT_DIR=${INPUT_DIR}/raw/starlink
+INPUT_DIR=${PROJECT_ROOT}/input
 OUTPUT_DIR=${PROJECT_ROOT}/output
 SCRIPTS_DIR=${PROJECT_ROOT}/utils/scripts
 
