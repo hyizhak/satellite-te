@@ -1,6 +1,6 @@
-# Ultra Low-Latency Traffic Engineering for Satellite Networks
+# SaTE: Low-Latency Traffic Engineering for Satellite Networks
 
-This repository accompanies our paper **"Ultra Low-Latency Traffic Engineering for Satellite Networks"**. It provides source codes, along with the necessary scripts, tools, and environment to reproduce the results discussed in the paper. 
+This repository accompanies our paper **"SaTE: Low-Latency Traffic Engineering for Satellite Networks"**. It provides source codes, along with the necessary scripts, tools, and environment to reproduce the results discussed in the paper. 
 
 ## Overview
 
