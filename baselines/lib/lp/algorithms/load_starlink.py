@@ -3,6 +3,7 @@ import pickle
 import sys
 import numpy as np
 import random
+import torch
 sys.path.append('../..')
 
 from lib import AssetManager
@@ -180,7 +181,7 @@ def generate_random_values(k, total_sum):
     scaled_values = random_values * total_sum
     return scaled_values
 
-def split_tm(tm, k):
+def pop_split(tm, k):
     tm = tm.astype(float)
     allocated_arrays = [np.zeros_like(tm) for _ in range(k)]
 
@@ -191,3 +192,35 @@ def split_tm(tm, k):
                 allocated_arrays[idx][i, j] = value
 
     return allocated_arrays
+
+def process_dict(input_dict):
+    # Iterate over each key in the dictionary
+    for key in input_dict:
+        # Convert the list of tuples to a dictionary for easier manipulation
+        entries = dict(input_dict[key])
+
+        # Ensure entries from 0 to 4 exist
+        for n in range(5):
+            if n not in entries:
+                entries[n] = 0.0
+
+        # Convert back to sorted list of tuples
+        input_dict[key] = sorted(entries.items())
+
+    return input_dict
+
+def sol_dict_to_tensor(input_dict):
+    # Process the dictionary to ensure each key has entries from 0 to 4
+    processed_dict = process_dict(input_dict)
+
+    # Extract the values into a list of lists
+    data = []
+    for key in processed_dict:
+        # Extract only the values for each key
+        values = [value for _, value in processed_dict[key]]
+        data.append(values)
+
+    # Convert the list of lists to a tensor of size (-1, 5)
+    tensor = torch.tensor(data)
+
+    return tensor

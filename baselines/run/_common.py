@@ -6,7 +6,7 @@ _ROOT = f'{os.path.dirname(__file__)}/..'
 # ========== Benchmarking arguments
 
 ##tempt 
-ARG_PROBLEM_PATH = '/home/azureuser/cloudfiles/code/te_problems/iridium/IridiumDataSet14day20sec_Int5'
+ARG_PROBLEM_PATH = 'path_to_te_problems/iridium/IridiumDataSet14day20sec_Int5'
 TOP_PERCENTAGE = 1.0
 NUM_PARTS_SCALE_FACTOR = 3
 
@@ -58,3 +58,4 @@ def update_output_path(args, model):
         args.output_prefix = f'{model}'
     args.work_dir = os.path.join(args.output_dir, args.output_prefix)
     args.output_csv = os.path.join(args.work_dir, f'{model}.csv')
+    os.makedirs(os.path.dirname(args.output_csv), exist_ok=True)

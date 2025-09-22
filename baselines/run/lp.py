@@ -229,7 +229,7 @@ if __name__ == "__main__":
     parser.add_argument("--mode", type=str, default=MODE)
     parser.add_argument("--online", type=bool, default=ONLINE)
     parser.add_argument("--POP-ratio", type=int, default=1)
-    parser.add_argument("--num-run", type=int, default=3)
+    parser.add_argument("--num-run", type=int, default=1000)
     parser.add_argument("--chunk", type=int, default=CHUNK)
 
     # output paramenters
@@ -244,6 +244,8 @@ if __name__ == "__main__":
     parser.add_argument('--test-tm-per-topo', type=int, default=ARG_TEST_TM_PER_TOPO)
     
     args = parser.parse_args()
+
+    args.sol_dir = os.path.join(args.output_dir, f"Gurobi_size-{args.size}_mode-{args.mode}_intensity-{args.intensity}_volume-{args.num_run}_solutions.pkl")
     
     update_output_path(args, f"lp_obj-{args.obj}_{args.intensity}_{args.size}_{args.mode}_Online-{args.online}_POP-{args.POP_ratio}")
     
