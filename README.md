@@ -31,6 +31,14 @@ conda activate satte
 
 ### 3. Runing Experiments
 
+To run the experiments, please follow the steps below:
+
+- Create a directory (e.g., `.../raw/starlink`).
+- Download the Starlink input dataset from: https://drive.google.com/drive/folders/1h6kbOj4HpqofPNd7lkIJDTut4XF4ipAF?usp=sharing. Save the downloaded datasets (DataSetForSaTE25, DataSetForSaTE50, DataSetForSaTE75, and DataSetForSaTE100) into this directory.
+- Update the variables INPUT_DIR and RAW_INPUT_DIR in utils/scripts/env to point to the directory containing the downloaded data.
+- Run the corresponding adaptation scripts (e.g., utils/scripts/adapt_starlink.sh) to preprocess the dataset, including path pre-configuration and traffic aggregation.
+
+
 Each experiment presented in the paper can be reproduced using the provided bash scripts. This repository consists mainly of:
 
 ```plaintext
